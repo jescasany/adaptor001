@@ -1,3 +1,44 @@
+
+# Use ROS from IPython
+
+15/03/2016
+
+I have installed:
+
+ROS Hydro in Ubuntu 12.04 with Python 2.7.3, Gazebo 1.9.6 in Tosh computer that has an Intel processor with 4 cores x 2 threads each making a total of 8 CPU,s. (I don't know, at this time, how Gazebo uses the processor.)
+
+Ros by example 1 and 2 have provided RBX1 and RBX2 software that are installed in hydro_ws catkin package. I have made a new directory named adaptor where my software is installed. These notebooks are saved in adaptor_notebooks directory, for example.
+
+
+
+
+Run  roscore in tosh
+
+Change to the launch directory of your project by doing:
+
+roscd adaptor_gazebo/launch
+
+The next launch file will just execute a launch file provided 
+by RBX2, and tells it to load our world file (simple world), our adaptor robot (pi robot with kinect) and show the Gazebo 
+client. You can launch it by doing:
+
+roslaunch adaptor_gazebo adaptor_world.launch
+
+Here look for code for pi robot or turtlebot in gazebo https://github.com/jihoonl/mine/tree/master/visualizer/resources/turtlebot_description/urdf or here
+
+https://github.com/Shokoofeh/pi_tracker or
+
+https://thelittlerobotblogs.wordpress.com/2014/02/24/populating-gazebo-worlds/ or
+
+https://github.com/JoshMarino/gazebo_and_ros_control
+
+
+
+====================================================================
+
+====================================================================
+
+
 __27/01/2017__
 
 __Now, I have changed to Stage + behavior trees.__
