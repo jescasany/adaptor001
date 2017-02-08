@@ -1,0 +1,18 @@
+image: ../bitmaps/maze.png
+resolution: 0.06
+origin: [-5.0, -5.0, 0.0]
+negate: 0
+occupied_thresh: 0.25
+free_thresh: 0.196
+
+
+# Esto hay que adaptarlo a este bitmap
+
+# 2150x700 pix
+
+# 491 pix -> 13.900 m
+
+# res = 0.0283 pix/m
+
+# 1012 >>> 28.6396
+# 340  >>> 9.622
