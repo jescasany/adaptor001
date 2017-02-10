@@ -11,10 +11,8 @@
 
 import rospy
 import actionlib
-from actionlib import GoalStatus
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-from tf.transformations import quaternion_from_euler
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionFeedback
+from move_base_msgs.msg import MoveBaseAction
 from visualization_msgs.msg import Marker
 from math import  pi
 

@@ -13,13 +13,11 @@ import rospy
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist, Point, Pose2D, Quaternion, Pose
 from tf.transformations import quaternion_from_euler
-from nav_msgs.msg import Odometry
 from rbx2_msgs.srv import *
 from pi_trees_ros.pi_trees_ros import *
 from wall_follower_setup import *
 from collections import OrderedDict
-from math import sqrt, sin, cos
-import time
+from math import sin, cos, pi
 
 # A class to track global variables
 class BlackBoard():
@@ -44,43 +42,10 @@ black_board = BlackBoard()
 
 # Create a move list mapping positions to moves.
 black_board.MOVE_BASE = OrderedDict()
-
-class UpdateMoveList:
-    def __init__(self, move):
-        self.move = move
-
-    def run(self):
-        try:
-            black_board.move_list.append(self.move)
-        except:
-            pass
-        
-        return True
-
-class CheckLocation(Task):
-    def __init__(self, *args, **kwargs):
-        name = "CHECK_LOCATION_" + str(black_board.patrol_count)
-        super(CheckLocation, self).__init__(name)    
-        self.name = name
-
-    def run(self):
-        wp = black_board.waypoints[black_board.patrol_count].position
-        cp = black_board.robot_position
-        
-        distance = sqrt((wp.x - cp.x) * (wp.x - cp.x) +
-                        (wp.y - cp.y) * (wp.y - cp.y) +
-                        (wp.z - cp.z) * (wp.z - cp.z))
-                                
-        if distance < 0.15:
-            status = TaskStatus.SUCCESS
-        else:
-            status = TaskStatus.FAILURE
-            
-        return status
     
 class NextWaypoint(Task):
     def __init__(self, *args, **kwargs):
-        name = "NEXT_WAYPOINT_" + str(black_board.patrol_count + 1)
+        name = "NEXT_WAYPOINT_" + str(black_board.patrol_count)
         super(NextWaypoint, self).__init__(name)
         self.name = name
         
@@ -100,7 +65,10 @@ class NextWaypoint(Task):
         goal.target_pose.header.frame_id = 'map'
         goal.target_pose.header.stamp = rospy.Time.now()
         goal.target_pose.pose = black_board.waypoints[black_board.patrol_count]
-        black_board.MOVE_BASE[black_board.patrol_count] = SimpleActionTask("MOVE_BASE_" + str(black_board.patrol_count), "move_base", MoveBaseAction, goal, reset_after=True, feedback_cb=tree.update_robot_position)
+        black_board.MOVE_BASE[black_board.patrol_count] = SimpleActionTask("MOVE_BASE_" + str(black_board.patrol_count), "move_base", MoveBaseAction, goal, reset_after=True, feedback_cb=self.update_robot_position)
+        
+    def update_robot_position(self, msg):
+        black_board.robot_position = msg.base_position.pose.position
         
         return TaskStatus.SUCCESS
 
@@ -113,6 +81,16 @@ class WallFollower():
         
         # Initialize a number of parameters and variables
         setup_task_environment(self)
+        
+        # Create simple action navigation task for the first waypoint
+        if black_board.patrol_count == 0:
+            goal = MoveBaseGoal()
+            goal.target_pose.header.frame_id = 'map'
+            goal.target_pose.header.stamp = rospy.Time.now()
+            # Append the first waypoint to the list.
+            black_board.waypoints.append(Pose(Point(18.0, -3.5, 0.0), Quaternion(0.0, 0.0, pi, 1.0)))
+            goal.target_pose.pose = black_board.waypoints[black_board.patrol_count]
+            black_board.MOVE_BASE[black_board.patrol_count] = SimpleActionTask("MOVE_BASE_" + str(black_board.patrol_count), "move_base", MoveBaseAction, goal, reset_after=True, feedback_cb=self.update_robot_position)
         
         # Set the docking station pose
         goal = MoveBaseGoal()
@@ -138,8 +116,11 @@ class WallFollower():
         BEHAVE.add_child(STAY_HEALTHY)
         BEHAVE.add_child(NEXT_WAYPOINT)
         BEHAVE.add_child(WALL_FOLLOWER)
+            
         
         print "black_board.patrol_count: ", black_board.patrol_count
+        for k, v in black_board.MOVE_BASE.items():
+            print k, v
         raw_input("Press a key to continue...")
         
         # Add the move_base tasks to the wall_follower task
@@ -154,7 +135,7 @@ class WallFollower():
             CHARGE_ROBOT = ServiceTask("CHARGE_ROBOT", "battery_simulator/set_battery_level", SetBatteryLevel, 100, result_cb = self.recharge_cb)
       
             # Build the recharge sequence using inline syntax
-            RECHARGE = Sequence("RECHARGE", [MOVE_BASE['dock'], CHARGE_ROBOT])
+            RECHARGE = Sequence("RECHARGE", [NAV_DOCK_TASK, CHARGE_ROBOT])
                 
             # Add the check battery and recharge tasks to the stay healthy selector
             STAY_HEALTHY.add_child(CHECK_BATTERY)
@@ -185,15 +166,6 @@ class WallFollower():
   
     def update_robot_position(self, msg):
         black_board.robot_position = msg.base_position.pose.position
-#        self.patrol_count += 1
-#        angle = msg.base_position.pose.orientation
-#        print angle.x
-#        print angle.y
-#        print angle.z
-#        print angle.w
-#        raw_input("Press key to continue...")
-#        quaternion = Quaternion(*quaternion_from_euler(0, 0, pi, axes='sxyz'))
-#        self.waypoints.append(Pose(Point(15.0, -3.5, 0.0), quaternion))
           
     def shutdown(self):
         rospy.loginfo("Stopping the robot...")
