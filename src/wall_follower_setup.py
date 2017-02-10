@@ -28,9 +28,6 @@ def setup_task_environment(self):
     # How long do we have to get to each waypoint?
     self.move_base_timeout = rospy.get_param("~move_base_timeout", 10) #seconds
     
-    # Initialize the patrol counter
-    self.patrol_count = 0
-    
     # Subscribe to the move_base action server
     self.move_base = actionlib.SimpleActionClient("move_base", MoveBaseAction)
     
@@ -40,16 +37,6 @@ def setup_task_environment(self):
     self.move_base.wait_for_server(rospy.Duration(60))    
     
     rospy.loginfo("Connected to move_base action server")
-    
-    # Create a variable to hold the target quaternion (orientation)
-    quaternion = Quaternion(*quaternion_from_euler(0, 0, pi, axes='sxyz'))
-    
-     # Create a list to hold the waypoint poses
-    self.waypoints = list()
-            
-    # Append the first waypoint to the list.  Each waypoint
-    # is a pose consisting of a position and orientation in the map frame.
-    self.waypoints.append(Pose(Point(15.0, -3.5, 0.0), quaternion))
     
     # Where is the docking station?
     self.docking_station_pose = (Pose(Point(18.0, -7.5, 0.0), Quaternion(0.0, 0.0, pi, 1.0)))
