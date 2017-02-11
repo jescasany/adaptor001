@@ -8,16 +8,19 @@
     
     Based on patrol_tree.py and clean_house_tree.py from rbx2_tasks/nodes
 """
+#import pdb
 
 import rospy
+import tf
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist, Point, Pose2D, Quaternion, Pose
+from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 from tf.transformations import quaternion_from_euler
 from rbx2_msgs.srv import *
 from pi_trees_ros.pi_trees_ros import *
 from wall_follower_setup import *
 from collections import OrderedDict
-from math import sin, cos, pi
+from math import sin, cos, pi, degrees
 
 # A class to track global variables
 class BlackBoard():
@@ -49,28 +52,77 @@ class NextWaypoint(Task):
         super(NextWaypoint, self).__init__(name)
         self.name = name
         
-    def run(self):
-        black_board.patrol_count += 1
+        # Initialize the tf listener
+        self.tf_listener = tf.TransformListener()
         
-        cp = black_board.robot_pose2d
-        co = black_board.robot_pose2d.theta
+        # Give tf some time to fill its buffer
+        rospy.sleep(2)
+        
+        # Set the odom frame
+        self.odom_frame = '/odom'
+        
+        # Set the map frame
+        self.map_frame = 'map'
+        
+        # Find out if the robot uses /base_link or /base_footprint
+        try:
+            self.tf_listener.waitForTransform(self.odom_frame, '/base_footprint', rospy.Time(), rospy.Duration(1.0))
+            self.base_frame = '/base_footprint'
+        except (tf.Exception, tf.ConnectivityException, tf.LookupException):
+            try:
+                self.tf_listener.waitForTransform(self.odom_frame, '/base_link', rospy.Time(), rospy.Duration(1.0))
+                self.base_frame = '/base_link'
+            except (tf.Exception, tf.ConnectivityException, tf.LookupException):
+                rospy.loginfo("Cannot find transform between /odom and /base_link or /base_footprint")
+                rospy.signal_shutdown("tf Exception")  
+        
+    def run(self):
+#        pdb.set_trace()
+        
+#        cp = black_board.robot_position
+        
+        # Get the starting position values     
+        (cp, co) = self.get_odom()
+        
+        print cp
+        print co, degrees(co)
+        raw_input("Press a key to continue...")
+        
         quaternion = Quaternion(*quaternion_from_euler(0, 0, co, axes='sxyz'))
-            
+        
+        d = 3   # distance to move forward
+        
         # Append the next waypoint to the list.  Each waypoint
         # is a pose consisting of a position and orientation in the map frame.
-        black_board.waypoints.append(Pose(Point(cp.x * (1 + cos(co)) , cp.y * (1 + sin(co)), 0.0), quaternion))
+        black_board.waypoints.append(Pose(Point(cp.x + d * cos(abs(co)) , cp.y + d *  sin(abs(co)), 0.0), quaternion))
         
         # Create simple action navigation task for each waypoint
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'
         goal.target_pose.header.stamp = rospy.Time.now()
         goal.target_pose.pose = black_board.waypoints[black_board.patrol_count]
-        black_board.MOVE_BASE[black_board.patrol_count] = SimpleActionTask("MOVE_BASE_" + str(black_board.patrol_count), "move_base", MoveBaseAction, goal, reset_after=True, feedback_cb=self.update_robot_position)
         
+        print black_board.patrol_count
+        print black_board.waypoints[black_board.patrol_count]
+        raw_input("Press a key to continue...")
+        
+        black_board.MOVE_BASE[black_board.patrol_count] = SimpleActionTask("MOVE_BASE_" + str(black_board.patrol_count), "move_base", MoveBaseAction, goal, reset_after=False, feedback_cb=self.update_robot_position)
+    
     def update_robot_position(self, msg):
         black_board.robot_position = msg.base_position.pose.position
+        black_board.patrol_count += 1
         
         return TaskStatus.SUCCESS
+        
+    def get_odom(self):
+        # Get the current transform between the odom and base frames
+        try:
+            (trans, rot)  = self.tf_listener.lookupTransform(self.odom_frame, self.map_frame, rospy.Time(0))
+        except (tf.Exception, tf.ConnectivityException, tf.LookupException):
+            rospy.loginfo("TF Exception")
+            return
+
+        return (Point(*trans), quat_to_angle(Quaternion(*rot)))
 
 class WallFollower():
     def __init__(self):

@@ -12,7 +12,7 @@
 import rospy
 import actionlib
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-from move_base_msgs.msg import MoveBaseAction
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionFeedback
 from visualization_msgs.msg import Marker
 from math import  pi
 
