@@ -102,8 +102,7 @@ class GoTo():
             (position, rotation) = self.get_odom()
             
             # Compute the Euclidean distance from the start
-            dist = sqrt(pow((position.x - x_start), 2) + 
-                            pow((position.y - y_start), 2))
+            dist = sqrt(pow((position.x - x_start), 2) + pow((position.y - y_start), 2))
 
         # Stop the robot before the rotation
         move_cmd = Twist()

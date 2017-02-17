@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 """
-    wall_follower_tree.py - Version 1.0 2017-02-07
+    wall_follow_vel_tree.py - Version 1.0 2017-02-16
     
     Navigate a series of waypoints while monitoring battery levels.
     Uses the pi_trees package to implement a behavior tree task manager.
     
-    Based on patrol_tree.py and clean_house_tree.py from rbx2_tasks/nodes
+    Based on patrol_tree.py and clean_house_tree.py from rbx2_tasks/nodes insofar as it is related to Behavior trees.
 """
 #import pdb
 
@@ -23,7 +23,7 @@ from pi_trees_ros.pi_trees_ros import *
 #import wall_follower_setup as wfs
 from wall_follower_setup import *
 from collections import OrderedDict
-from math import sin, cos, pi, degrees
+from math import sqrt, pow, sin, cos, pi, radians, degrees
 
 # A class to track global variables
 class BlackBoard():
