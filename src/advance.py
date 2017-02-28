@@ -100,7 +100,7 @@ def advance(distance, angle):
     move_cmd.angular.z = angular_speed
     
     # Track the last angle measured
-    last_angle = rotation
+    last_angle = quat_to_angle(rotation)
     
     # Track how far we have turned
     turn_angle = 0
@@ -118,7 +118,7 @@ def advance(distance, angle):
         
         # Add to the running total
         turn_angle += delta_angle
-        last_angle = rotation
+        last_angle = quat_to_angle(rotation)
         
     # Stop the robot before the next leg
     move_cmd = Twist()
@@ -141,7 +141,7 @@ def get_odom(tf_listener, odom_frame, base_frame):
         rospy.loginfo("TF Exception")
         return
 
-    return (Point(*trans), quat_to_angle(Quaternion(*rot)))
+    return (Point(*trans), Quaternion(*rot))
 
  
 

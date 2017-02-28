@@ -87,7 +87,7 @@
   </include>
 
   <!--  **************** Visualisation ****************  -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/adaptor001.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/robot_navigation.rviz"/>
   
   
 </launch>

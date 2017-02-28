@@ -7,6 +7,8 @@ Created on Thu Feb 16 11:59:11 2017
 """
 import pdb
 import rospy
+import numpy as np
+import pylab
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from rbx2_msgs.srv import *
@@ -22,7 +24,7 @@ class BlackBoard():
         # The robot's current position on the map
         self.robot_pose = Pose()
         
-        # Create a dictionary to hold navigation tasks for getting to each waypoint
+        # Create a dictionary to hold navigation waypoints
         self.waypoints = list()
         
         # Initialize the patrol counter
@@ -31,13 +33,28 @@ class BlackBoard():
     def print_position(self):
         print self.move_count
         print self.robot_pose
+    
+    def plotter(self, y):    
+    # Uncomment these next few lines to display a constantly updating graph of data.
+    # Note: when the graph appears, you must close it first, and then the graph will reopen
+    # and display the data as it comes in.
+        x = []
+        x = range(len(y))
+        pylab.figure(1)
+        pylab.clf()
+        pylab.plot(x,y)
+        pylab.draw()
+        pylab.show()
+        
+        raw_input("Press a key to continue...") 
         
 
 # Initialize the black board
 black_board = BlackBoard()
 # Initialize a list to hold the waypoint poses
 black_board.robot_pose = (0.0, 0.0, 0.0, 0.0)
-black_board.result = ""
+black_board.kinect_scan = list()
+black_board.filtered_scan = list()
 
 
 class Pruebas():
@@ -100,12 +117,40 @@ class Pruebas():
     def is_visited(self):
         if black_board.robot_pose in black_board.waypoints:
             return True
+        rospy.loginfo("is not visited.")
         return False
     
+    def formule(self, L):
+        f = 0
+        f = L[1] - (L[0] + L[2]) / 2
+        return f
+        
+    def moving_window_filtro(self, x, n_neighbors=1):
+        n = len(x)
+        width = n_neighbors*2 + 1
+        x = [x[0]]*n_neighbors + x + [x[-1]]*n_neighbors
+        # To complete the function,
+        # return a list of the filtered values from i to i+width for all values i from 0 to n-1.
+        filtro = []
+        for i in range(n):
+            fi = self.formule(x[i:i+width])
+            filtro.append(fi)
+            
+        return filtro
+    
     def is_possible(self):
-        black_board.result = self.laser_scan()
+        self.laser_scan()
         rospy.sleep(2)
-        print black_board.result
+        y = list()
+        y = black_board.kinect_scan
+        black_board.plotter(black_board.kinect_scan)
+        black_board.filtered_scan = self.moving_window_filtro(y, 1)
+        black_board.plotter(black_board.filtered_scan)
+        #update distanceToWall
+        distance_to_wall = sum(y) / float(len(y))
+        print "distanceToWall: ", distance_to_wall
+        
+        #raw_input("Press a key to continue...")
         
         return True
     
@@ -115,16 +160,10 @@ class Pruebas():
         # Subscribe the /base_scan topic to get the range readings  
         rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, self.scan_callback, queue_size = 10)
         rospy.loginfo("laser_scan done")
+        
     
     def scan_callback(self, msg):
-        y = list()
-        y = msg.ranges
-        if sum(y[0:200])/200 < 3.0 and sum(y[200:400])/200 == 5.0:
-            black_board.result = "right wall"
-        elif sum(y[200:400])/200 < 4.0:
-            black_board.result = "obstacle"
-        else:
-            black_board.result = "right door"
+        black_board.kinect_scan = list(msg.ranges)
     
     def shutdown(self):
         rospy.loginfo("Stopping the robot...")

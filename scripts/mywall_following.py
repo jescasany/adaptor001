@@ -16,7 +16,7 @@ from tf.transformations import euler_from_quaternion
 import cv_bridge
 import cv
 
-import numpy
+import numpy as np
 import sensor_msgs.msg as sm
 import pylab
 import scipy.optimize as sci
@@ -31,7 +31,7 @@ import laser_bueno01
 # We want these values to be global, but we haven't yet given them a value.
 # NOTE: Python throws a warning as a result of running things in this fashion, but you'll
 # be fine.
-global distanceToWall
+global distance_to_wall
 global Front
 global Back 
 global Left
@@ -50,7 +50,7 @@ followWall = 1
 # taking in a filtered laserScan where all NaN data are removed from the list.
 
 PreviousDirection = "none"
-CurrentLaserScan = numpy.asarray([])
+CurrentLaserScan = np.asarray([])
 Intersection = True       # default is False.  Set True for testing
 distanceToWall = 0 
 wallAngle = 0
@@ -71,15 +71,14 @@ def HandleDepthData(data1):
     global on
     global wallFollowMode
     
+    # gets an image 240 x 320 and one channel
     bridge = cv_bridge.CvBridge()
     image = bridge.imgmsg_to_cv(data1, "16UC1")
-        
-    # gets an image 240 x 320 and one channel
     
-    x = []
     # gets the pixel x location (because we're only taking the valid points
-    y = []
+    x = []
     # gets the distances
+    y = []
     
     for i in range(0, 319, numIncrement):
         # add all the valid points and their corresponding locations on the
@@ -88,15 +87,15 @@ def HandleDepthData(data1):
         if not math.isnan(image[120, i]):
             x += [i]
             y += [image[120,i]]
-    x = numpy.asarray(x)
-    y = numpy.asarray(y)
+    x = np.asarray(x)
+    y = np.asarray(y)
 
     #update distanceToWall
-    distanceToWall = y.sum() / y.size
+    distance_to_wall = y.sum() / y.size
     
     print "distanceToWall", distanceToWall
     
-    raw_input("Press...")
+    raw_input("Press a key to continue...")
 
 # Uncomment these next few lines to display a constantly updating graph of data.
 # Note: when the graph appears, you must close it first, and then the graph will reopen
@@ -108,13 +107,13 @@ def HandleDepthData(data1):
     #pylab.draw()
     #pylab.show()
     
-    #raw_input("Pulsa una tecla para continuar...") 
+    #raw_input("Press a key to continue...") 
     
     x = x * 3.26 / 320.
     
     if y.size < 2:
         print "not enough data.  Too many NaN values thrown out."
-        distancetoWall = 0
+        distance_to_wall = 0
         wallAngle = 0
         return
         

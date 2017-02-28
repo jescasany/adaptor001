@@ -18,11 +18,11 @@
     <param name="base_watchdog_timeout" value="0.5"/>
     <remap from="odom" to="odom"/>
     <remap from="base_pose_ground_truth" to="base_pose_ground_truth"/>
-    <remap from="cmd_vel" to="mobile_base/commands/velocity"/>
-    <remap from="base_scan" to="scan"/>
+    <remap from="cmd_vel" to="cmd_vel"/>
+    <remap from="base_scan" to="base_scan"/>
   </node>
   
-  <!--  ***************** Robot Model *****************  -->
+  <!--  ***************** Robot Model *****************  
   <include file="$(find turtlebot_bringup)/launch/includes/robot.launch.xml">
     <arg name="base" value="$(arg base)" />
     <arg name="stacks" value="$(arg stacks)" />
@@ -31,16 +31,18 @@
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
     <param name="use_gui" value="true"/>
   </node>
-  
-  <!-- Command Velocity multiplexer -->
+  -->
+  <!-- Command Velocity multiplexer 
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
   <node pkg="nodelet" type="nodelet" name="cmd_vel_mux" args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
     <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml"/>
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
   </node>
-  
+  -->
  <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
       <param name="publish_frequency" type="double" value="20.0" />
   </node>  -->
   
+  <!--  **************** Visualisation ****************  -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/stage.rviz"/>
 </launch>
