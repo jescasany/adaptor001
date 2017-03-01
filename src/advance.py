@@ -114,7 +114,7 @@ def advance(distance, angle):
         (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
         
         # Compute the amount of rotation since the last loop
-        delta_angle = normalize_angle(rotation - last_angle)
+        delta_angle = normalize_angle(quat_to_angle(rotation) - last_angle)
         
         # Add to the running total
         turn_angle += delta_angle

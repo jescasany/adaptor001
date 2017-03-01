@@ -7,15 +7,11 @@
 """
 import roslib
 import rospy
-
 from std_msgs.msg import String
-
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
-
 import cv_bridge
 import cv
-
 import numpy as np
 import sensor_msgs.msg as sm
 import pylab
@@ -25,7 +21,6 @@ import time
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
-
 import laser_bueno01
 
 # We want these values to be global, but we haven't yet given them a value.
