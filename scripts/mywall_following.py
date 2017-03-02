@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 """ 
-    mywall_following.py - Version 1.0 2015-05-21
+    mywall_following.py - Version 1.0 2017-03-01
     
     Juan Escasany for make mybot following walls      
 """
-import roslib
+
 import rospy
 from std_msgs.msg import String
 from nav_msgs.msg import Odometry
@@ -21,7 +21,6 @@ import time
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
-import laser_bueno01
 
 # We want these values to be global, but we haven't yet given them a value.
 # NOTE: Python throws a warning as a result of running things in this fashion, but you'll

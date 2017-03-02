@@ -1,11 +1,12 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 16 11:59:11 2017
+Created on Thu Mar 02 2017
 
 @author: juan
 """
 import pdb
+
 import rospy
 import numpy as np
 import scipy.optimize as sci
@@ -24,10 +25,9 @@ class BlackBoard():
     def __init__(self):
         
         # The robot's current position on the map
-        self.robot_pose = (Point(), Quaternion())
         self.robot_position = Point()
         self.robot_rotation = Quaternion()
-        
+        self.robot_pose = (Point(), Quaternion())
         # Create a dictionary to hold navigation waypoints
         self.waypoints = list()
         
@@ -52,7 +52,7 @@ class BlackBoard():
         pylab.show()
         #raw_input("Press a key to continue...")
         
-    def wall_ang(self, y):
+    def right_wall_ang(self, y):
         x = []
         y = y[0:200]
         x = range(len(y))
@@ -63,16 +63,17 @@ class BlackBoard():
         guess = (0, 0)
         coefficients, success = sci.leastsq(errfunc, guess[:], args = (x, y), maxfev = 10000)
         # update wall_angle
-        black_board.wall_angle = math.atan(coefficients[0])*360./(2*math.pi)
-        
+        black_board.right_wall_angle = math.atan(coefficients[0])*360./(2*math.pi)
+        black_board.right_wall_p1 = coefficients[1]
 
 # Initialize the black board
 black_board = BlackBoard()
-# Initialize a list to hold the waypoint poses
+# Initialize a number of variables for the blackboard
 black_board.kinect_scan = list()
 black_board.filtered_scan = list()
 
-black_board.distance_to_wall = 0.0
+black_board.distance_to_right_wall = 0.0
+black_board.distance_to_front = 7.0
 black_board.Front = False
 black_board.Back = False
 black_board.Left = False
@@ -96,7 +97,7 @@ class Pruebas():
         
         WALL_FOLLOW = Sequence("WALL_FOLLOW")
 
-        MOVE_ADV = CallbackTask("move_3", self.move_adv)
+        MOVE_ADV = CallbackTask("move_adv", self.move_adv)
         
         IS_VISITED = CallbackTask("is_visited", self.is_visited)
         
@@ -180,14 +181,14 @@ class Pruebas():
         black_board.singularity = self.moving_window_filtro(y, 1)[1]
         print "singularity: ", black_board.singularity
         black_board.plotter(black_board.filtered_scan)
-        black_board.wall_ang(y)
+        black_board.right_wall_ang(y)
         black_board.robot_rotation = quat_to_angle(black_board.robot_rotation)
         print "odom_angle: ", math.degrees(black_board.robot_rotation) 
-        print "wall_angle: ", black_board.wall_angle
+        print "wall_angle: ", black_board.right_wall_angle
         #update distanceToWall
-        black_board.distance_to_wall = sum(y) / float(len(y))
-        print "distance_to_wall: ", black_board.distance_to_wall
-        
+        black_board.distance_to_right_wall = sum(y) / float(len(y))
+        print "distance_to_right_wall: ", black_board.distance_to_right_wall
+        print "coefficient p1: ", black_board.right_wall_p1
 #        raw_input("Press a key to continue...")
         
         return True
