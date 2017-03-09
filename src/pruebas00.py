@@ -20,6 +20,19 @@ from advance import *
 import sensor_msgs.msg
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 
+# for fancy terminal displays
+class bcolors:
+    HEADER = '\033[7;1;95m'
+    OKBLUE = '\033[94m'
+    OKRED = '\033[31;1m'
+    OKGREEN = '\033[1;92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    REVERSE = '\033[7m'
+
 # A class to track black_board.variables
 class BlackBoard():
     def __init__(self):
@@ -52,7 +65,7 @@ class BlackBoard():
         pylab.show()
         #raw_input("Press a key to continue...")
         
-    def reg(self, y):
+    def regression(self, y):
         x = range(len(y))
         x = np.asarray(x)
         y = np.asarray(y)
@@ -64,7 +77,7 @@ class BlackBoard():
         
     def right_wall_param(self, y):
         y = y[0:200]
-        coefficients = self.reg(y)
+        coefficients = self.regression(y)
         # approximate wall_angle (degrees)
         black_board.right_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
@@ -72,12 +85,12 @@ class BlackBoard():
         
     def left_wall_param(self, y):
         y = y[438:639]
-        coefficients = self.reg(y)
+        coefficients = self.regression(y)
         # approximate wall_angle (degrees)
         black_board.left_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
         black_board.distance_to_left_wall = coefficients[1]
-        
+
 # Initialize the blackboard
 black_board = BlackBoard()
 # Initialize a number of variables for the blackboard
@@ -94,8 +107,11 @@ black_board.Front = False
 black_board.Front_All = False
 black_board.Left = False
 black_board.Right = False
+black_board.Right_Corner = False
 (black_board.robot_position, black_board.robot_rotation) = black_board.robot_pose 
 black_board.odom_angle = 0.0
+
+black_board.chs = 1     # used to change the sign(+/-) of the pi/2 turn
 
 class Pruebas():
     def __init__(self):
@@ -111,18 +127,21 @@ class Pruebas():
         # Create the root node
         BEHAVE = Sequence("BEHAVE")
         
-        WALL_FOLLOW = Sequence("WALL_FOLLOW")
+        WALL_FOLLOW = Sequence("WALL FOLLOW")
 
+        MOVE_AVOID = Sequence("MOVE AVOID") 
+          
+        FRONT_FREE = CallbackTask("front free", self.front_free)
         MOVE_ADV = CallbackTask("move_adv", self.move_adv)
         
         I_F_IS_VISITED =IgnoreFailure("I_F IS VISITED")
         
-        IS_VISITED = CallbackTask("is_visited", self.is_visited)
+        IS_VISITED = CallbackTask("is visited", self.is_visited)
         
-        IS_POSSIBLE = Sequence("IS_POSSIBLE")
+        IS_POSSIBLE = Sequence("IS POSSIBLE")
         
         RIGHT_SENSING = CallbackTask("right sensing", self.right_status)
-        FRONT_FREE = CallbackTask("front free", self.front_free)
+        FRONT_STATUS = CallbackTask("front status", self.front_status)
         
         SINGULARITIES = Selector("SINGULARITIES")
         
@@ -141,14 +160,18 @@ class Pruebas():
         
         BEHAVE.add_child(WALL_FOLLOW)
         
-        WALL_FOLLOW.add_child(MOVE_ADV)
+        WALL_FOLLOW.add_child(MOVE_AVOID)
         WALL_FOLLOW.add_child(I_F_IS_VISITED)
-        I_F_IS_VISITED.add_child(IS_VISITED)
         WALL_FOLLOW.add_child(IS_POSSIBLE)
         WALL_FOLLOW.add_child(SINGULARITIES)
         
+        MOVE_AVOID.add_child(FRONT_FREE)
+        MOVE_AVOID.add_child(MOVE_ADV)
+        
+        I_F_IS_VISITED.add_child(IS_VISITED)
+        
         IS_POSSIBLE.add_child(RIGHT_SENSING)
-        IS_POSSIBLE.add_child(FRONT_FREE)
+        IS_POSSIBLE.add_child(FRONT_STATUS)
         
         SINGULARITIES.add_child(LONG_RIGHT)
         SINGULARITIES.add_child(SHORT_RIGHT)
@@ -163,17 +186,62 @@ class Pruebas():
         SHORT_RIGHT.add_child(FRONT_NONE)
         
         # Display the tree before beginning execution
-        print "Patrol Behavior Tree"
-        print_tree(BEHAVE)
-        
+        print bcolors.HEADER + "Wall Follow Behavior Tree" + bcolors.ENDC
+        print_tree(BEHAVE, indent=0, use_symbols=True)
+        print_dot_tree(BEHAVE, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree.dot')
         # Run the tree
         while not rospy.is_shutdown():
             BEHAVE.run()
             rospy.sleep(0.1)
+
+    def front_free(self):
+        rospy.loginfo("Estoy en front free")
+        self.laser_scan()   # updates black_board.kinect_scan (ranges)
+        rospy.sleep(2)
+        black_board.distance_to_obstacle = 5.0
+        y = list()
+        y = black_board.kinect_scan
         
+        #black_board.plotter(black_board.kinect_scan)
+        
+        black_board.filtered_scan = self.moving_window_filtro(y[200:438], 1)[0]
+        # returns the readings having the discontinuity
+        front_singularity = self.moving_window_filtro(y[200:438], 1)[1]
+        if len(front_singularity) != 0:
+            front_singularity = [x+200 for x in front_singularity]
+            print "front singularities: ", front_singularity
+            singular_readings = []
+            for i in front_singularity:
+                singular_readings.append(y[i])
+            print "front singular readings: ", singular_readings
+            black_board.distance_to_obstacle = min(y[front_singularity[-1]:350])
+            
+        #black_board.plotter(black_board.filtered_scan, "Front")
+        
+        #update average_distance_to_front
+        average_distance_to_front = sum(y[200:438])/238.
+        print "average distance to front: ", average_distance_to_front
+        
+        print bcolors.OKGREEN + "distance to obstacle: " +  str(black_board.distance_to_obstacle) + bcolors.ENDC
+#        raw_input("Press a key to continue...")
+        if black_board.distance_to_obstacle > black_board.adv_distance + 0.75:
+            print bcolors.OKGREEN + "FRONT FREE" + bcolors.ENDC
+#            black_board.adv_distance = 1.5
+#            black_board.adv_angle = 0.0
+            black_board.Front = True    
+        else:
+            print bcolors.OKRED + "OBSTACLE IN FRONT -> (+/-)PI/2" + bcolors.ENDC
+            black_board.adv_distance = 0.0
+            black_board.adv_angle = black_board.chs * math.pi/2
+            black_board.chs *=-1
+            black_board.Front = False
+        return 2    
+              
     def move_adv(self):
+        rospy.loginfo("Estoy en move advance")
         try:
             raw_input("Press a key to continue...")
+            #pdb.set_trace()
             if black_board.move_count == 0:
                 # black_board.robot_pose is a tuple (position, rotation)
                 (black_board.robot_position, black_board.robot_rotation) = advance(0.0, 0.0)
@@ -183,10 +251,10 @@ class Pruebas():
                 rospy.loginfo("move_adv done.")
                 return True
             
-            
             (black_board.robot_position, black_board.robot_rotation) = advance(black_board.adv_distance, black_board.adv_angle)
+            black_board.adv_angle = 0.0
             black_board.print_position()
-#          raw_input("Press a key to continue...")
+#            raw_input("Press a key to continue...")
             black_board.waypoints.append((black_board.robot_position, black_board.robot_rotation))
             black_board.move_count += 1
             rospy.loginfo("move_adv done.")
@@ -194,17 +262,17 @@ class Pruebas():
             rospy.loginfo("move_adv failed.")
             return False
             
-        return True
+        return 2
     
     def is_visited(self):
         if black_board.move_count == 0:
-            rospy.loginfo("is not visited.")
+            rospy.loginfo("Waypoint is not visited.")
             return False
         if (black_board.robot_position, black_board.robot_rotation) in black_board.waypoints[0:-1]:
-            rospy.loginfo("is visited.")
+            rospy.loginfo("Waypoint is visited.")
             return True
         else:
-            rospy.loginfo("is not visited.")
+            rospy.loginfo("Waypoint is not visited.")
             return False
     
     def formule(self, L):
@@ -232,70 +300,46 @@ class Pruebas():
             
         return filtro, singularity
     
-    def front_free(self):
-        self.laser_scan()
-        rospy.sleep(2)
-        y = list()
-        y = black_board.kinect_scan
-        #black_board.plotter(black_board.kinect_scan)
-        black_board.filtered_scan = self.moving_window_filtro(y[200:438], 1)[0]
-        # returns the reading has the discontinuity
-        black_board.front_singularity = self.moving_window_filtro(y[200:438], 1)[1]
-        black_board.front_singularity = [x+200 for x in black_board.front_singularity]
-        print "front singularities: ", black_board.front_singularity
-        singular_readings = []
-        for i in black_board.front_singularity:
-            singular_readings.append(y[i])
-        print "front singular readings: ", singular_readings
-        black_board.plotter(black_board.filtered_scan, "Front")
-        #update average_distance_to_front
-        black_board.average_distance_to_front = sum(y[200:438])/238.
-        print "average distance to front: ", black_board.average_distance_to_front
-        
-        black_board.distance_to_obstacle = min(y[290:350])
-        print "distance to obstacle: ", black_board.distance_to_obstacle
-#        raw_input("Press a key to continue...")
-        if black_board.distance_to_obstacle > black_board.adv_distance + 0.75:
-            rospy.loginfo("Front is free.")
-            black_board.Front = True    
-        else:
-            rospy.loginfo("Front is blocked.")
-            black_board.Front = False
-        return True
+   
     
     def front_status(self):
+        rospy.loginfo("Estoy en front status")
         self.laser_scan()
         rospy.sleep(2)
+        tester = 5.0
         y = list()
         y = black_board.kinect_scan
         #black_board.plotter(black_board.kinect_scan)
         black_board.filtered_scan = self.moving_window_filtro(y[200:438], 1)[0]
-        # returns the reading has the discontinuity
-        black_board.front_singularity = self.moving_window_filtro(y[200:438], 1)[1]
-        black_board.front_singularity = [x+200 for x in black_board.front_singularity]
-        print "front singularities: ", black_board.front_singularity
-        singular_readings = []
-        for i in black_board.front_singularity:
-            singular_readings.append(y[i])
-        print "front singular readings: ", singular_readings
-        black_board.plotter(black_board.filtered_scan, "Front")
-        #update average_distance_to_front
-        black_board.average_distance_to_front = sum(y[200:438])/238.
-        print "average distance to front: ", black_board.average_distance_to_front
+        # returns the reading having the discontinuity
+        front_singularity = self.moving_window_filtro(y[200:438], 1)[1]
         
-        tester = min(y[210:-1])
+        if len(front_singularity) != 0:
+            front_singularity = [x+200 for x in front_singularity]
+            print "front singularities: ", front_singularity
+            singular_readings = []
+            for i in front_singularity:
+                singular_readings.append(y[i])
+            print "front singular readings: ", singular_readings
+            tester = min(y[front_singularity[-1]:-1])
+        #black_board.plotter(black_board.filtered_scan, "Front")
+        #update average_distance_to_front
+        average_distance_to_front = sum(y[200:438])/238.
+        print "average distance to front: ", average_distance_to_front
+        
         if tester > black_board.adv_distance + 0.75:
-            rospy.loginfo("Front is free.")
+            print bcolors.OKGREEN + "Front is free." + bcolors.ENDC
             black_board.Front_All = False
             black_board.adv_angle = 0.0
-            return False
         else:
-            rospy.loginfo("Front is blocked.")
+            print bcolors.OKGREEN + "Front is blocked -> PI/2" + bcolors.ENDC
             black_board.Front_All = True
             black_board.adv_angle = math.pi/2
-            return True
+            
+        return 2
         
     def right_status(self):
+        rospy.loginfo("Estoy en right status")
         self.laser_scan()
         rospy.sleep(2)
         y = list()
@@ -305,7 +349,7 @@ class Pruebas():
         # returns the reading has the discontinuity
         black_board.right_singularity = self.moving_window_filtro(y, 1)[1]
         print "right singularities: ", black_board.right_singularity
-        black_board.plotter(black_board.filtered_scan, "Right")
+        #black_board.plotter(black_board.filtered_scan, "Right")
         singular_readings = []
         for i in black_board.right_singularity:
             singular_readings.append(y[i])
@@ -317,17 +361,25 @@ class Pruebas():
         #update average_distance_to_right_wall
         black_board.average_distance_to_right_wall = sum(y[0:200]) / 200.
         print "average distance to right wall: ", black_board.average_distance_to_right_wall
-        print "distance to right wall(coefficients[1]): ", black_board.distance_to_right_wall
+        print bcolors.OKGREEN + "distance to right wall(coefficients[1]): " +  str(black_board.distance_to_right_wall) + bcolors.ENDC
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_right_wall < 4.5:
             rospy.loginfo("Right sensing")
             black_board.Right = True
+            for s in black_board.right_singularity:
+                if s < 200 and len(black_board.right_singularity) == 1:
+                    print bcolors.OKGREEN + "RIGHT SHORT" + bcolors.ENDC
+                    print bcolors.OKGREEN + "CORNER NEXT" + bcolors.ENDC
+                    black_board.Right = False
+                    black_board.Right_Corner = True
         else:
             rospy.loginfo("Nothing on the right")
             black_board.Right = False
-        return True
+            black_board.Right_Corner = False
+        return 2
     
     def left_status(self):
+        rospy.loginfo("Estoy en left status")
         self.laser_scan()
         rospy.sleep(2)
         y = list()
@@ -338,14 +390,14 @@ class Pruebas():
         black_board.left_singularity = self.moving_window_filtro(y[438:-1], 1)[1]
         black_board.left_singularity = [x+438 for x in black_board.left_singularity]
         print "left singularities: ", black_board.left_singularity
-        black_board.plotter(black_board.filtered_scan, "Left")
+        #black_board.plotter(black_board.filtered_scan, "Left")
         singular_readings = []
         for i in black_board.left_singularity:
             singular_readings.append(y[i])
         print "left singular readings: ", singular_readings
         black_board.left_wall_param(y)
         robot_rotation_angle = quat_to_angle(black_board.robot_rotation)
-        print "odom_angle: ", math.degrees(normalize_angle(robot_rotation_angle)) 
+        print "odom_angle: ",  math.degrees(normalize_angle(robot_rotation_angle))
         print "wall_angle: ", black_board.left_wall_angle
         #update average_distance_to_left_wall
         black_board.average_distance_to_left_wall = sum(y[438:-1])/200.
@@ -358,43 +410,76 @@ class Pruebas():
         else:
             rospy.loginfo("Nothing on the left")
             black_board.Left = False
-        return True
+        return 2
     
     def same(self):
-        self.left_status()
-        
-        return True
+        rospy.loginfo("Estoy en same")
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == True and black_board.Right == True and black_board.Front == True:
+            print bcolors.OKGREEN + "SAME: right sensing -- left appears" + bcolors.ENDC
+            return True
+        else:
+            return False
     
     def small_cross(self):
-        self.left_status()
-        
-        return True
+        rospy.loginfo("Estoy en small cross")
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == True and black_board.Right == False and black_board.Front == True:
+            print bcolors.OKGREEN + "nothing on right -- left appears" + bcolors.ENDC
+            return True
+        else:
+            return False
     
     def front_left_right(self):
-        self.left_status()
-        
-        return True
+        rospy.loginfo("Estoy en front left right")
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == True and black_board.Right == True and black_board.Front == True:
+            print bcolors.OKGREEN + "nothing on right -- right and left appear" + bcolors.ENDC
+            return True
+        else:
+            return False
     
     def front_right(self):
-        self.left_status()
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == False and black_board.Right == True and black_board.Front == True and len(black_board.right_singularity) > 1:
+            print bcolors.OKGREEN + "nothing on right -- right appears" + bcolors.ENDC
+            return True
+        else:
+            return False
         
-        return True
-    
     def front_all(self):
-        self.left_status()
-        
-        return True
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == True and black_board.Right == False and black_board.Front_All == True:
+            print bcolors.OKGREEN + "nothing on right -- all front appears" + bcolors.ENDC   
+            return True
+        else:
+            return False
     
     def front_none(self):
-        self.left_status()
-        
-        return True
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == False and black_board.Right == False and black_board.Front_All == False and black_board.Right_Corner == True:
+            print bcolors.OKGREEN + "ON RIGHT CORNER: nothing on right nor front" + bcolors.ENDC
+            black_board.adv_angle = -math.pi/2
+            return True
+        else:
+            return False
     
     def corner(self):
-        self.left_status()
+        #pdb.set_trace()
+        #self.left_status()
+        if black_board.Left == True and black_board.Right == True and black_board.Front_All == True:
+            print bcolors.OKGREEN + "IN CORNER" + bcolors.ENDC
+            black_board.adv_angle = math.pi/2
+            return True
+        else:
+            return False
         
-        return True
-    
     def laser_scan(self):
         rospy.loginfo("Waiting for /base_scan topic...")
         rospy.wait_for_message('/base_scan', sensor_msgs.msg.LaserScan)
@@ -417,7 +502,7 @@ class Pruebas():
             return val
     
     def scan_callback(self, msg):
-        black_board.kinect_scan = list(msg.ranges)
+        black_board.kinect_scan = list(msg.ranges) # transform to list since ranges is a tuple
     
     def shutdown(self):
         rospy.loginfo("Stopping the robot...")

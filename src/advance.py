@@ -17,37 +17,29 @@ from math import radians, sqrt, pow
 def advance(distance, angle):
     # Publisher to control the robot's speed
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-    
     # How fast will we update the robot's movement?
     rate = 20
-    
     # Set the equivalent ROS rate variable
     r = rospy.Rate(rate)
-    
-    # Set the forward linear speed to 0.15 meters per second 
+    # Set the forward linear speed to 0.2 meters per second
     linear_speed = 0.2
-    
     # Set the travel distance in meters
     goal_distance = distance
-
     # Set the rotation speed in radians per second
-    angular_speed = 0.5
-    
+    if angle < 0.0:
+        angular_speed = -0.5
+    else:
+        angular_speed = 0.5
     # Set the angular tolerance in degrees converted to radians
     angular_tolerance = radians(1.0)
-    
     # Set the rotation angle to angle in radians 
     goal_angle = angle
-
     # Initialize the tf listener
     tf_listener = tf.TransformListener()
-    
     # Give tf some time to fill its buffer
     rospy.sleep(2)
-    
     # Set the odom frame
     odom_frame = '/odom'
-    
     # Find out if the robot uses /base_link or /base_footprint
     try:
         tf_listener.waitForTransform(odom_frame, '/base_footprint', rospy.Time(), rospy.Duration(1.0))
@@ -59,16 +51,13 @@ def advance(distance, angle):
         except (tf.Exception, tf.ConnectivityException, tf.LookupException):
             rospy.loginfo("Cannot find transform between /odom and /base_link or /base_footprint")
             rospy.signal_shutdown("tf Exception")  
-    
     # Initialize the position variable as a Point type
-    position = Point()
-        
+    position = Point()   
     # Initialize the movement command
     move_cmd = Twist()
-    
     # Set the movement command to forward motion
     move_cmd.linear.x = linear_speed
-    
+
     # Get the starting position values     
     (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
                 
