@@ -6,26 +6,22 @@ strict digraph  {
 	node [color=black,
 		fontsize=9
 	];
-	"WALL FOLLOW"	 [shape=cds];
-	BEHAVE -> "WALL FOLLOW";
 	"MOVE AVOID"	 [shape=cds];
-	"WALL FOLLOW" -> "MOVE AVOID";
-	"WALL FOLLOW" -> "I_F IS VISITED";
+	BEHAVE -> "MOVE AVOID";
+	BEHAVE -> "I_F IS VISITED";
 	"IS POSSIBLE"	 [shape=cds];
-	"WALL FOLLOW" -> "IS POSSIBLE";
+	BEHAVE -> "IS POSSIBLE";
 	SINGULARITIES	 [shape=diamond];
-	"WALL FOLLOW" -> SINGULARITIES;
+	BEHAVE -> SINGULARITIES;
 	"MOVE AVOID" -> "front free";
 	"MOVE AVOID" -> move_adv;
 	"I_F IS VISITED" -> "is visited";
 	"IS POSSIBLE" -> "right sensing";
 	"IS POSSIBLE" -> "front status";
-	LONG_RIGHT	 [shape=diamond];
-	SINGULARITIES -> LONG_RIGHT;
+	SINGULARITIES -> "right sensing -- left appears";
 	SHORT_RIGHT	 [shape=diamond];
 	SINGULARITIES -> SHORT_RIGHT;
 	SINGULARITIES -> CORNER;
-	LONG_RIGHT -> "right sensing -- left appears";
 	SHORT_RIGHT -> "nothing on right -- left appears";
 	SHORT_RIGHT -> "nothing on right -- right and left appear";
 	SHORT_RIGHT -> "nothing on right -- right appears";
