@@ -7,12 +7,10 @@
   <arg name="stacks"     default="$(optenv TURTLEBOT_STACKS hexagons)"/>  <!-- circles, hexagons -->
   <arg name="3d_sensor"  default="$(optenv TURTLEBOT_3D_SENSOR kinect)"/>  <!-- kinect, asus_xtion_pro -->
   
-  <param name="/use_sim_time" value="false" />
+  <param name="/use_sim_time" value="true" />
 
   <!-- Load the URDF/Xacro model of our robot -->
   <arg name="urdf_file" default="$(find xacro)/xacro.py '$(find rbx1_description)/urdf/turtlebot.urdf.xacro'" />
-   
-   
     
  <node pkg="stage_ros" type="stageros" name="stageros" args="$(arg world_file)">
     <param name="base_watchdog_timeout" value="0.5"/>
@@ -20,9 +18,10 @@
     <remap from="base_pose_ground_truth" to="base_pose_ground_truth"/>
     <remap from="cmd_vel" to="cmd_vel"/>
     <remap from="base_scan" to="base_scan"/>
+    <remap from="map" to="map"/>
   </node>
   
-  <!--  ***************** Robot Model *****************  
+  <!--  ***************** Robot Model *****************  -->
   <include file="$(find turtlebot_bringup)/launch/includes/robot.launch.xml">
     <arg name="base" value="$(arg base)" />
     <arg name="stacks" value="$(arg stacks)" />
@@ -31,7 +30,7 @@
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
     <param name="use_gui" value="true"/>
   </node>
-  -->
+  
   <!-- Command Velocity multiplexer 
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
   <node pkg="nodelet" type="nodelet" name="cmd_vel_mux" args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
@@ -42,6 +41,20 @@
  <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
       <param name="publish_frequency" type="double" value="20.0" />
   </node>  -->
+  
+  <!--  ************** Navigation  ***************  
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>-->
+  
+  <!-- load map 
+  <node pkg="map_server" type="map_server" args="/home/juan/catkin_ws/src/adaptor001/worlds/autolab.yaml" respawn="true" name="map1" />
+  
+  <include file="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml">
+    <arg name="scan_topic" value="scan"/>
+    <arg name="use_map_topic" value="true"/>
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>--> 
   
   <!--  **************** Visualisation ****************  -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/stage.rviz"/>

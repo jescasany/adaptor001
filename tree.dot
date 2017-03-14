@@ -14,7 +14,10 @@ strict digraph  {
 	SINGULARITIES	 [shape=diamond];
 	BEHAVE -> SINGULARITIES;
 	"MOVE AVOID" -> "front free";
-	"MOVE AVOID" -> move_adv;
+	AVOID	 [shape=cds];
+	"MOVE AVOID" -> AVOID;
+	AVOID -> PREPARE;
+	AVOID -> TURN_BACK;
 	"I_F IS VISITED" -> "is visited";
 	"IS POSSIBLE" -> "right sensing";
 	"IS POSSIBLE" -> "front status";
