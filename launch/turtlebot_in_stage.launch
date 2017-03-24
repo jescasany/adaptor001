@@ -42,6 +42,9 @@
     <remap from="cmd_vel" to="mobile_base/commands/velocity"/>
     <remap from="base_scan" to="scan"/>
   </node>
+  
+  <!-- The runtime (in seconds) of the fake battery -->
+  <arg name="battery_runtime" default="60" />
 
   <!--  ***************** Robot Model *****************  -->
   <include file="$(find turtlebot_bringup)/launch/includes/robot.launch.xml">
@@ -59,6 +62,10 @@
     <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml"/>
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
   </node>
+  
+  <include file="$(find rbx2_utils)/launch/battery_simulator.launch">
+     <arg name="battery_runtime" value="$(arg battery_runtime)" />
+  </include>
 
   <!--  ************** Navigation  ***************  -->
   <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
@@ -77,5 +84,5 @@
   </include>
 
   <!--  **************** Visualisation ****************  -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/robot_navigation.rviz"/>
 </launch>

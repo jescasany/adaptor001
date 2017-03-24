@@ -22,7 +22,7 @@
   <param name="/use_sim_time" value="true"/>
 
   <!-- The runtime (in seconds) of the fake battery -->
-  <arg name="battery_runtime" default="600" />
+  <arg name="battery_runtime" default="60" />
 
   <!--  ******************** Stage ********************  -->
   <!-- 
@@ -44,8 +44,21 @@
     <remap from="odom" to="odom"/>
     <remap from="base_pose_ground_truth" to="base_pose_ground_truth"/>
     <remap from="cmd_vel" to="mobile_base/commands/velocity"/>
-    <remap from="base_scan" to="scan"/>
+    <remap from="base_scan" to="base_scan"/>
   </node>
+  
+  <!-- Load the URDF/Xacro model of our robot -->
+  <arg name="urdf_file" default="$(find xacro)/xacro.py '$(find rbx1_description)/urdf/turtlebot.urdf.xacro'" />
+  
+  <!--
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+      <param name="publish_frequency" type="double" value="20.0" />
+  </node>
+  -->
+  
+   <!-- We need a static transforms for the wheels -->
+  <node pkg="tf" type="static_transform_publisher" name="odom_left_wheel_broadcaster" args="0 0 0 0 0 0 /base_link /left_wheel_link 100" />
+  <node pkg="tf" type="static_transform_publisher" name="odom_right_wheel_broadcaster" args="0 0 0 0 0 0 /base_link /right_wheel_link 100" />
 
   <!--  ***************** Robot Model *****************  -->
   <include file="$(find turtlebot_bringup)/launch/includes/robot.launch.xml">
@@ -54,9 +67,11 @@
     <arg name="3d_sensor" value="$(arg 3d_sensor)" />
   </include>
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-    <param name="use_gui" value="true"/>
+    <param name="use_gui" value="false"/>
   </node>
-
+  
+  <param name="robot_description" command="$(arg urdf_file)" />
+  
   <!-- Command Velocity multiplexer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
   <node pkg="nodelet" type="nodelet" name="cmd_vel_mux" args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
@@ -89,6 +104,9 @@
   <!--  **************** Visualisation ****************  -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/robot_navigation.rviz"/>
   
-  
+  <!-- Run a static transform between /odom and /map -->
+  <!--<node pkg="tf" type="static_transform_publisher" name="odom_map_broadcaster" args="0 0 0 0 0 0 /map /odom 100" /> -->
+  <node pkg="tf" type="static_transform_publisher" name="odom_to_map"
+    args="0.1 0  0  -1.570796327 0 -1.570796327  /map /odom 100" /> 
 </launch>
 

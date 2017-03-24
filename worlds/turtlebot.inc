@@ -7,8 +7,10 @@ define kinect ranger
     samples 640
   )
   # generic model properties
-  color "black"
+  #color "black"
+  color_rgba [ 0 0 1 0.3 ]
   size [ 0.06 0.15 0.03 ]
+  pose [0.0 0.0 0.5 90]
 )
 
 define turtlebot position

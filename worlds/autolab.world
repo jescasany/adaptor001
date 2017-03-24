@@ -21,10 +21,10 @@ interval_sim 100  # simulation timestep in milliseconds
 
 window
 (
-  size [ 809.000 689.000 ] 
-  center [0.0 0.0]
-  rotate [0.0 0.0]
-  scale 31.082 
+  size [ 809 689 ] 
+  center [13.340 -2.799]
+  rotate [0.000 0.000]
+  scale 66.627 
 )
 
 floorplan
@@ -39,7 +39,7 @@ floorplan
 # throw in a robot
 turtlebot
 (
-  pose [ 18.0 -3.5 0.0 180.0 ]
+  pose [ 18.000 -5.000 0.000 180.000 ]
   name "turtlebot"
   color "blue"
 )

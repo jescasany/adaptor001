@@ -42,8 +42,8 @@
       <param name="publish_frequency" type="double" value="20.0" />
   </node>  -->
   
-  <!--  ************** Navigation  ***************  
-  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>-->
+  <!--  ************** Navigation  ***************  -->
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
   
   <!-- load map 
   <node pkg="map_server" type="map_server" args="/home/juan/catkin_ws/src/adaptor001/worlds/autolab.yaml" respawn="true" name="map1" />
@@ -55,6 +55,11 @@
     <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
     <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
   </include>--> 
+  
+  <!-- Run a static transform between /odom and /map -->
+  <node pkg="tf" type="static_transform_publisher" name="odom_map_broadcaster" args="0 0 0 0 0 0 /map /odom 100" />
+ <!-- <node pkg="tf" type="static_transform_publisher" name="odom_to_map"
+    args="0.1 0  0  -1.570796327 0 -1.570796327  /map /odom 100" />  -->
   
   <!--  **************** Visualisation ****************  -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find adaptor001)/rviz/stage.rviz"/>

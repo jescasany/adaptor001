@@ -6,21 +6,20 @@ strict digraph  {
 	node [color=black,
 		fontsize=9
 	];
-	"MOVE AVOID"	 [shape=cds];
+	"MOVE AVOID"	 [shape=diamond];
 	BEHAVE -> "MOVE AVOID";
 	BEHAVE -> "I_F IS VISITED";
 	"IS POSSIBLE"	 [shape=cds];
 	BEHAVE -> "IS POSSIBLE";
+	BEHAVE -> move_adv;
 	SINGULARITIES	 [shape=diamond];
 	BEHAVE -> SINGULARITIES;
 	"MOVE AVOID" -> "front free";
-	AVOID	 [shape=cds];
 	"MOVE AVOID" -> AVOID;
-	AVOID -> PREPARE;
-	AVOID -> TURN_BACK;
 	"I_F IS VISITED" -> "is visited";
 	"IS POSSIBLE" -> "right sensing";
 	"IS POSSIBLE" -> "front status";
+	"IS POSSIBLE" -> TURN_BACK;
 	SINGULARITIES -> "right sensing -- left appears";
 	SHORT_RIGHT	 [shape=diamond];
 	SINGULARITIES -> SHORT_RIGHT;
