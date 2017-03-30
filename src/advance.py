@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" advance.py - Version 1.0 2017-02-17
+""" advance.py - Version 1.0 2017-03-25
 
     A basic demo of using the /odom topic to move a robot a given distance
     or rotate through a given angle.
@@ -15,7 +15,7 @@ from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 from math import radians, sqrt, pow
 
 def advance(distance, angle, da = True):
-    # Publisher to control the robot's speed
+    """ Publisher to control the robot's speed """
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     # How fast will we update the robot's movement?
     rate = 10
@@ -42,7 +42,7 @@ def advance(distance, angle, da = True):
     map_frame = '/map'
     # Set the odom frame
     odom_frame = '/odom'
-    # Find out if the robot uses /map->/odom transform
+    """ Find out if the robot uses /map->/odom transform """
     try:
         tf_listener.waitForTransform(map_frame, odom_frame, rospy.Time(), rospy.Duration(1.0))
     except (tf.Exception, tf.ConnectivityException, tf.LookupException):
@@ -157,7 +157,7 @@ def advance(distance, angle, da = True):
     return (position, rotation)
 
 def get_odom(tf_listener, odom_frame, base_frame):
-    # Get the current transform between the odom and base frames
+    """ Get the current transform between the odom and base frames """
     try:
         (trans, rot)  = tf_listener.lookupTransform(odom_frame, base_frame, rospy.Time(0))
     except (tf.Exception, tf.ConnectivityException, tf.LookupException):

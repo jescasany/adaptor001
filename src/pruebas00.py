@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Mar 02 2017
-
+Last visited on 25/03/2017
 @author: juan
 """
 import pdb
@@ -33,7 +33,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
     REVERSE = '\033[7m'
 
-# A class to track black_board.variables
+""" A class to track black_board.variables """
 class BlackBoard():
     def __init__(self):
         
@@ -260,7 +260,8 @@ class Pruebas():
         average_distance_to_front = sum(y[290:350])/60.
         print "average distance to front: ", average_distance_to_front
         #black_board.distance_to_obstacle = average_distance_to_front
-        print bcolors.OKGREEN + "distance to obstacle: " +  str(black_board.distance_to_obstacle) + bcolors.ENDC
+        print bcolors.OKGREEN + "distance to obstacle: " +  \
+            str(black_board.distance_to_obstacle) + bcolors.ENDC
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_obstacle > black_board.adv_distance:
             print bcolors.OKGREEN + "FRONT FREE" + bcolors.ENDC
