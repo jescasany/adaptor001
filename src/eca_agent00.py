@@ -127,6 +127,36 @@ class BlackBoard:
             black_board.driving_forward = True
         rospy.loginfo("laser_scan done")
         
+    def formule(self, L, tolerance):
+        f = 0
+        f = L[1] - (L[0] + L[2])/2
+        f = self.round_to_zero(f, tolerance)
+        return f
+        
+    def moving_window_filtro(self, x, tolerance, n_neighbors=1):
+        n = len(x)
+        width = n_neighbors*2 + 1
+        x = [x[0]]*n_neighbors + x + [x[-1]]*n_neighbors
+        # To complete the function,
+        # return a list of the filtered values from i to i+width for all values i from 0 to n-1.
+        filtro = []
+        singularity = []
+        for i in range(n):
+            fi = self.formule(x[i:i+width], tolerance)
+            if fi > 0:
+                filtro.append(fi)
+                singularity.append(i)
+            else:
+                filtro.append(0.0)
+            
+        return filtro, singularity
+    
+    def round_to_zero(self, val, tolerance):
+        if -1 * tolerance < val < tolerance:
+            return 0
+        else:
+            return val
+        
     def move_adv(self):
         rospy.loginfo("Estoy en move advance")
         #pdb.set_trace()
@@ -144,7 +174,7 @@ class BlackBoard:
             
             self.laser_scan()
             if black_board.driving_forward:
-                (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, 0.0, da=True)
+                (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, black_board.adv_angle, da=True)
                 black_board.adv_angle = 0.0
                 black_board.print_position()
     #            raw_input("Press a key to continue...")
@@ -295,7 +325,7 @@ class EcaAgent00:
     
     def __init__(self):
         
-        pdb.set_trace()
+        #pdb.set_trace()
         rospy.init_node("eca_agent00_tree")
         # Set the shutdown function (stop the agent)
         rospy.on_shutdown(self.shutdown)
@@ -308,15 +338,15 @@ class EcaAgent00:
          # initialize existence
         ex = None
         # initialize primitive interactions
-        primitive_interactions = {"move forward": ("e1", "r1", 5),\
-                                  "turn left": ("e2", "r2", -1), \
-                                  "turn right": ("e3", "r3", 1),\
-                                  "front free": ("e4", "r4", 5),\
+        primitive_interactions = {"move forward": ("e1", "r1", 10),\
+                                  "turn left": ("e2", "r2", -5), \
+                                  "turn right": ("e3", "r3", -2),\
+                                  "front free": ("e4", "r4", -2),\
                                   "front busy": ("e4", "r5", -10),\
-                                  "right sensing": ("e5", "r6", 5),\
-                                  "nothing on right": ("e5", "r8", -10),\
-                                  "left sensing": ("e6", "r7", 2),\
-                                  "nothing on left": ("e6", "r9", 2)}
+                                  "right sensing": ("e5", "r6", 1),\
+                                  "nothing on right": ("e5", "r8", -5),\
+                                  "left sensing": ("e6", "r7", -2),\
+                                  "nothing on left": ("e6", "r9", -2)}
         # initialize environments and existences
         self.mechanism = black_board.agent_mechanism
         if self.mechanism == "simple":
@@ -347,37 +377,13 @@ class EcaAgent00:
         # Run the tree
         while not rospy.is_shutdown():
             ECAAGENT00.run()
-            print (black_board.sim_step, black_board.step_trace)
+            print bcolors.OKGREEN + str(black_board.sim_step) + black_board.step_trace + bcolors.ENDC
             print "\n"
             black_board.sim_step += 1
             rate.sleep()
 
-    def formule(self, L, tolerance):
-        f = 0
-        f = L[1] - (L[0] + L[2])/2
-        f = self.round_to_zero(f, tolerance)
-        return f
-        
-    def moving_window_filtro(self, x, tolerance, n_neighbors=1):
-        n = len(x)
-        width = n_neighbors*2 + 1
-        x = [x[0]]*n_neighbors + x + [x[-1]]*n_neighbors
-        # To complete the function,
-        # return a list of the filtered values from i to i+width for all values i from 0 to n-1.
-        filtro = []
-        singularity = []
-        for i in range(n):
-            fi = self.formule(x[i:i+width], tolerance)
-            if fi > 0:
-                filtro.append(fi)
-                singularity.append(i)
-            else:
-                filtro.append(0.0)
-            
-        return filtro, singularity
-
     def front_free(self):
-        pdb.set_trace()
+        #pdb.set_trace()
         rospy.loginfo("Estoy en front free")
 #        self.laser_scan()   # updates black_board.kinect_scan (ranges)
 #        rospy.sleep(2)
@@ -416,8 +422,6 @@ class EcaAgent00:
             black_board.chs *=-1
             black_board.Front = False
             return 0     
-              
-    
     
     def is_visited(self):
         if black_board.move_count == 0:
@@ -477,11 +481,7 @@ class EcaAgent00:
                 black_board.Front_All = False
                 #black_board.adv_angle = math.pi/2
         return 2
-        
-    
-
-    
-        
+             
     def clamp(self, val, minimum, maximum):
         if val < minimum:
             return minimum
@@ -489,14 +489,6 @@ class EcaAgent00:
             return maximum
         else:
             return val
-
-    def round_to_zero(self, val, tolerance):
-        if -1 * tolerance < val < tolerance:
-            return 0
-        else:
-            return val
-    
-    
     
     def shutdown(self):
         rospy.loginfo("Stopping the agent...")
@@ -541,13 +533,13 @@ class Existence:
         Execute a single simulation step.
         :return: (str) performed interaction and mood
         """
-        print "Context: ", self.context_interaction
+        print bcolors.OKGREEN + "Context: " + str(self.context_interaction) + bcolors.ENDC
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
         result_label = self.environment.return_result(experiment)  # consult the world and return result
         result = self.addget_result(result_label)  # add result to the dictionary
         enacted_interaction = self.get_interaction(experiment.get_label() + result.get_label())
-        print "Enacted ", enacted_interaction
+        print bcolors.OKGREEN + "Enacted " + str(enacted_interaction) + bcolors.ENDC
 
         if enacted_interaction.get_valence() > 0:
             self.mood = 'HAPPY'
@@ -613,10 +605,10 @@ class Existence:
                 interaction.set_post_interaction(enacted_interaction)
                 interaction.set_valence(valence)
                 self.INTERACTIONS[label] = interaction
-                print "Learn " + label
+                print bcolors.OKGREEN + "Learn " + label + bcolors.ENDC
             else:
                 interaction = self.INTERACTIONS[label]
-                print 'Incrementing weight for ', interaction
+                print bcolors.OKGREEN + 'Incrementing weight for ' + str(interaction) + bcolors.ENDC
                 interaction.increment_weight()
 
     def anticipate(self):
@@ -633,7 +625,7 @@ class Existence:
                 # proclivity is a product of the weight of the whole interaction and a valence of proposed
                 proclivity = activated_interaction.get_weight() * proposed_interaction.get_valence()
                 anticipations.append(Anticipation(proposed_interaction, proclivity))
-                print "Afforded: ", proposed_interaction, " proclivity: " + str(proclivity)
+                print bcolors.OKGREEN + "Afforded: ", proposed_interaction, " proclivity: " + str(proclivity) + bcolors.ENDC
         return anticipations
 
     def get_activated_interactions(self):
@@ -658,16 +650,16 @@ class Existence:
             afforded_interaction = anticipations[0].get_interaction()
             if afforded_interaction.get_valence() >= 0:
                 intended_interaction = afforded_interaction
-                print "Intending ", intended_interaction
+                print bcolors.OKGREEN + "Intending " + str(intended_interaction) + bcolors.ENDC
                 chosen_experiment = intended_interaction.get_experiment()
             else:
                 # if proposed interaction leads to negative valence, choose at random
                 chosen_experiment = self.get_random_experiment(afforded_interaction)
-                print "Don't like the affordance, intending experiment " + chosen_experiment.get_label()
+                print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
         else:
             # if nothing was anticipated, choose at random
             chosen_experiment = self.get_random_experiment(None)
-            print "Don't know what to do, intending experiment " + chosen_experiment.get_label()
+            print bcolors.OKGREEN + "Don't know what to do, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
         return chosen_experiment
 
     def get_random_experiment(self, interaction):
@@ -721,26 +713,26 @@ class RecursiveExistence(Existence):
         self.context_pair_interaction = None  # context at previous two steps (t-2, t-1)
 
     def step(self):
-        pdb.set_trace()
-        print "Memory: ", self.INTERACTIONS.keys()
+        #pdb.set_trace()
+        print bcolors.OKGREEN + "Memory: ", str(self.INTERACTIONS.keys()) + bcolors.ENDC
         anticipations = self.anticipate()
         for anticipation in anticipations:
-            print "Anticipated: ", anticipation
+            print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
         experiment = self.select_experiment(anticipations)  # recursive experiment
-        print "Selected experiment: " + experiment.get_label()
+        print bcolors.OKGREEN + "Selected experiment: " + experiment.get_label() + bcolors.ENDC
         intended_interaction = experiment.get_intended_interaction()
-        print "Intending: ", intended_interaction
-        print "Intending experiment: ", intended_interaction.get_experiment().get_label()
+        print bcolors.OKGREEN + "Intending: " + str(intended_interaction) + bcolors.ENDC
+        print bcolors.OKGREEN + "Intending experiment: ", intended_interaction.get_experiment().get_label() + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
 
-        print "Enacted ", enacted_interaction
+        print bcolors.OKGREEN + "Enacted " + str(enacted_interaction) + bcolors.ENDC
         if enacted_interaction != intended_interaction and experiment.is_abstract:
             failed_result = self.addget_result(enacted_interaction.get_label().upper())
-            print "failed result: ", failed_result.get_label()
+            print bcolors.OKGREEN + "failed result: ", failed_result.get_label() + bcolors.ENDC
             valence = enacted_interaction.get_valence()
-            print "experiment: ", str(experiment)
+            print bcolors.OKGREEN + "experiment: ", str(experiment) + bcolors.ENDC
             enacted_interaction = self.addget_primitive_interaction(experiment, failed_result, valence)
-            print "Really enacted ", enacted_interaction
+            print bcolors.OKGREEN + "Really enacted " + str(enacted_interaction) + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
@@ -844,7 +836,7 @@ class RecursiveExistence(Existence):
                 context_interactions.append(self.context_interaction.get_post_interaction())
             if self.context_pair_interaction is not None:
                 context_interactions.append(self.context_pair_interaction)
-        print "Context: ", context_interactions
+        print bcolors.OKGREEN + "Context: " + str(context_interactions) + bcolors.ENDC
         activated_interactions = []
         for key in self.INTERACTIONS:
             activated_interaction = self.INTERACTIONS[key]
@@ -852,7 +844,7 @@ class RecursiveExistence(Existence):
                 if activated_interaction.get_pre_interaction() in context_interactions:
                     activated_interactions.append(activated_interaction)
         for activated_interaction in activated_interactions:
-            print "Activated: ", activated_interaction
+            print bcolors.OKGREEN + "Activated: " + str(activated_interaction) + bcolors.ENDC
         return activated_interactions
 
     def get_context_interaction(self):
@@ -889,9 +881,9 @@ class RecursiveExistence(Existence):
         composite_interaction.increment_weight()
 
         if composite_interaction.get_weight() == 1:
-            print "Learned: ", composite_interaction
+            print bcolors.OKGREEN + "Learned: " + str(composite_interaction) + bcolors.ENDC
         else:
-            print "Reinforced: ", composite_interaction
+            print bcolors.OKGREEN + "Reinforced: " + str(composite_interaction) + bcolors.ENDC
 
         return composite_interaction
 
@@ -929,16 +921,16 @@ class ConstructiveExistence(RecursiveExistence):
         # print "Memory: ", self.INTERACTIONS.keys()
         anticipations = self.anticipate()
         for anticipation in anticipations:
-            print "Anticipated: ", anticipation
+            print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
         intended_interaction = self.select_interaction(anticipations)
-        print "Intended interaction: ", intended_interaction
+        print bcolors.OKGREEN + "Intended interaction: " + str(intended_interaction) + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
-        print "Enacted interaction: ", enacted_interaction
+        print bcolors.OKGREEN + "Enacted interaction: " + str(enacted_interaction) + bcolors.ENDC
 
         # if intended interaction failed, record the alternative
         if enacted_interaction != intended_interaction:
             intended_interaction.add_alternative_interaction(enacted_interaction)
-            print "Alternative interactions:", intended_interaction.get_alternative_interactions()
+            print bcolors.OKGREEN + "Alternative interactions:" + str(intended_interaction.get_alternative_interactions()) + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
@@ -995,7 +987,7 @@ class ConstructiveExistence(RecursiveExistence):
     # Existence 50.2
     def anticipate(self):
         anticipations = self.get_default_anticipations()
-        print "Default anticipations: ", anticipations
+        print bcolors.OKGREEN + "Default anticipations: " + str(anticipations) + bcolors.ENDC
         activated_interactions = self.get_activated_interactions()
         # print "Activated interactions: ", activated_interactions
         if self.context_interaction is not None:
@@ -1145,36 +1137,38 @@ class ConstructiveEnvironment:
         :param intended_interaction: (Interaction) interaction attempted by the agent
         :return: (Interaction) interaction actually enacted
         """
+        #pdb.set_trace()
+        
         experiment = intended_interaction.get_label()[:2]
         result = None
         black_board.laser_scan()
-        if experiment.get_label() == 'e1':
+        if experiment == 'e1':
             black_board.adv_distance = 1.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
             result = 'r1'  # moved forward
-        elif experiment.get_label() == 'e2':
+        elif experiment == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
             black_board.move_adv()
             result = 'r2'   # turn left
-        elif experiment.get_label() == 'e3':
+        elif experiment == 'e3':
             black_board.adv_distance = 0.0
             black_board.adv_angle = -math.pi/2
             black_board.move_adv()
             result = 'r3'   # turn right
-        elif experiment.get_label() == 'e4':
+        elif experiment == 'e4':
             if black_board.driving_forward:
                 result = 'r4'  # front free
             else:
                 result = 'r5'  # front busy
-        elif experiment.get_label() == 'e5':
+        elif experiment == 'e5':
             black_board.right_status()
             if black_board.Right:
                 result = 'r6'   # right sensing
             else:
                 result = 'r8'   # nothing on the right
-        elif experiment.get_label() == 'e6':
+        elif experiment == 'e6':
             black_board.left_status()
             if black_board.Right:
                 result = 'r7'   # left sensing
@@ -1187,7 +1181,7 @@ class ConstructiveEnvironment:
         return enacted_interaction
 
 if __name__ == '__main__':
-    pdb.set_trace()
+    #pdb.set_trace()
     # run with  i.e. rosrun eca_agent00.py constructive
     parser = argparse.ArgumentParser()
     parser.add_argument("mechanism", type=str, help="specify the learning mechanism to be used",
