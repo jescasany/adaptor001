@@ -121,7 +121,7 @@ class BlackBoard:
         # Subscribe the /base_scan topic to get the range readings  
         rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, self.scan_callback, queue_size = 10)
         rospy.sleep(0.1)
-        if min(black_board.kinect_scan) < 0.8:
+        if min(black_board.kinect_scan) < 1.2:
             black_board.driving_forward = False
         else:
             black_board.driving_forward = True
@@ -181,9 +181,16 @@ class BlackBoard:
                 black_board.waypoints.append((black_board.agent_position, black_board.agent_rotation))
                 black_board.move_count += 1
                 rospy.loginfo("move_adv done.")
+                black_board.move_fail = False
+            else:
+                rospy.loginfo("move_adv failed.")
+                (black_board.agent_position, black_board.agent_rotation) = advance(-1.0, 0.0, da=True)
+                black_board.move_fail = True
         except:
             rospy.loginfo("move_adv failed.")
-            return 0
+            (black_board.agent_position, black_board.agent_rotation) = advance(-1.0, 0.0, da=True)
+            black_board.move_fail = True
+            return 1
         return 1
     
     def right_status(self):
@@ -301,7 +308,8 @@ black_board.filtered_scan = list()
 black_board.adv_distance = 1.0      # meters
 black_board.adv_angle = 0.0     # radians
 
-black_board.driving_forward = True
+black_board.driving_forward = True      # is True if there is no obstacle ahead 
+black_board.move_fail = False
 
 black_board.distance_to_right_wall = 1.5
 black_board.last_distance = 1.5
@@ -339,11 +347,12 @@ class EcaAgent00:
         ex = None
         # initialize primitive interactions
         primitive_interactions = {"move forward": ("e1", "r1", 10),\
-                                  "turn left": ("e2", "r2", -5), \
+                                  "move forward fail": ("e1", "r10", -10),\
+                                  "turn left": ("e2", "r2", -5),\
                                   "turn right": ("e3", "r3", -2),\
                                   "front free": ("e4", "r4", -2),\
-                                  "front busy": ("e4", "r5", -10),\
-                                  "right sensing": ("e5", "r6", 1),\
+                                  "front busy": ("e4", "r5", -2),\
+                                  "right sensing": ("e5", "r6", 10),\
                                   "nothing on right": ("e5", "r8", -5),\
                                   "left sensing": ("e6", "r7", -2),\
                                   "nothing on left": ("e6", "r9", -2)}
@@ -507,7 +516,6 @@ class Existence:
     When a given experiment is performed and a given result is obtained, 
     the corresponding interaction is considered enacted.
     """
-    
     EXPERIMENTS = dict()
     INTERACTIONS = dict()
     RESULTS = dict()
@@ -919,6 +927,7 @@ class ConstructiveExistence(RecursiveExistence):
     # Existence 50.2
     def step(self):
         # print "Memory: ", self.INTERACTIONS.keys()
+        print bcolors.OKGREEN + "Memory: ", str(self.INTERACTIONS.keys()) + bcolors.ENDC
         anticipations = self.anticipate()
         for anticipation in anticipations:
             print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
@@ -1089,7 +1098,10 @@ class Environment:
             black_board.adv_distance = 1.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
-            result = 'r1'  # moved forward
+            if black_board.move_fail:
+                result = 'r1'  # moved forward
+            else:
+                result = 'r10' # move failed
         elif experiment.get_label() == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
@@ -1146,7 +1158,10 @@ class ConstructiveEnvironment:
             black_board.adv_distance = 1.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
-            result = 'r1'  # moved forward
+            if black_board.move_fail:
+                result = 'r1'  # moved forward
+            else:
+                result = 'r10' # move failed
         elif experiment == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2

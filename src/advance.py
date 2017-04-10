@@ -22,9 +22,12 @@ def advance(distance, angle, da = True):
     # Set the equivalent ROS rate variable
     r = rospy.Rate(rate)
     # Set the forward linear speed to 0.2 meters per second
-    linear_speed = 0.5
+    if distance >= 0.0:
+        linear_speed = 0.5
+    else:
+        linear_speed = -0.5
     # Set the travel distance in meters
-    goal_distance = distance
+    goal_distance = abs(distance)
     # Set the rotation speed in radians per second
     if angle < 0.0:
         angular_speed = -0.5

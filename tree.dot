@@ -6,6 +6,6 @@ strict digraph  {
 	node [color=black,
 		fontsize=9
 	];
-	ECAAGENT00 -> "START STEP";
-	ECAAGENT00 -> "I_F IS VISITED";
+	ECAAGENT01 -> "START STEP";
+	ECAAGENT01 -> "I_F IS VISITED";
 }
