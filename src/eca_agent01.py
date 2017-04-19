@@ -940,7 +940,8 @@ class RecursiveExistence(Existence):
         return composite_interaction
 
     def addget_composite_interaction(self, pre_interaction, post_interaction):
-        """Record in or get from a composite interaction in memory.
+        """
+        Record in or get from a composite interaction in memory.
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
@@ -1278,7 +1279,7 @@ class Environment:
                 result = 'r8'   # nothing on the right
         elif experiment.get_label() == 'e6':
             black_board.left_status()
-            if black_board.Right:
+            if black_board.Left:
                 result = 'r7'   # left sensing: wall on the left
             else:
                 result = 'r9'   # nothing on the left
@@ -1338,7 +1339,7 @@ class ConstructiveEnvironment:
                 result = 'r8'   # nothing on the right
         elif experiment == 'e6':
             black_board.left_status()
-            if black_board.Right:
+            if black_board.Left:
                 result = 'r7'   # left sensing: wall on the left
             else:
                 result = 'r9'   # nothing on the left

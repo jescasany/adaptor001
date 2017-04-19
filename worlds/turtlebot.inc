@@ -13,6 +13,13 @@ define kinect ranger
   pose [0.0 0.0 0.5 90]
 )
 
+# this bumper array VERY crudely approximates the Roomba's bumpers
+#  bumper( bcount 2  
+#	  blength 0.33
+#        bpose[0] [0.12  0.12  45]
+#       bpose[1] [0.12 -0.12 -45] 
+#        )
+
 define turtlebot position
 (
   pose [ 0.0 0.0 0.0 0.0 ]

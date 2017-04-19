@@ -1,0 +1,11 @@
+strict digraph  {
+	graph [bgcolor=white,
+		ordering=out,
+		rotate=0
+	];
+	node [color=black,
+		fontsize=9
+	];
+	ECAAGENT02 -> "START STEP";
+	ECAAGENT02 -> "I_F IS VISITED";
+}

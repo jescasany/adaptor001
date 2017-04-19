@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Mar 02 2017
-Last visited on 30/03/2017
+Last visited on 18/04/2017
 @author: juan
 
 The Enactive Cognitive Architecture (ECA)
-based on Georgeon, Marshall, and Manzotti (2013). ECA: An enactivist cognitive
+based on the paper of Georgeon, Marshall, and Manzotti (2013). ECA: An enactivist cognitive
 architecture based on sensorimotor modeling. Biologically Inspired Cognitive
 Architectures, 6:46-57.
 
-Implemented following the Behavior Trees model.
+Implemented following the Behavior Trees model and the enactive agents code from Katja Abramova.
 """
 __author__ = 'juan'
 
@@ -29,9 +29,10 @@ from advance import *
 import sensor_msgs.msg
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 
-import os
 import argparse
-from interaction import *
+import abc
+from json import loads, dumps
+from collections import OrderedDict, Counter
 from experiment import *
 from result import Result
 from anticipation import *
@@ -49,6 +50,38 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     REVERSE = '\033[7m'
+    
+# to translate from 'e#r#' to clear 'meaning'
+class Decode:
+    def __init__(self, raw):
+        #pdb.set_trace()
+        self.raw = raw
+    
+    def get_translation(self):
+        #pdb.set_trace()
+        self.raw = self.raw.replace('e1r10','move forward fail')
+        self.raw = self.raw.replace('e1r1','move forward wall')
+        self.raw = self.raw.replace('e1r4','move forward')
+        self.raw = self.raw.replace('e2r2','turn left')
+        self.raw = self.raw.replace('e3r3','turn right')
+        self.raw = self.raw.replace('e4r4','front free')
+        self.raw = self.raw.replace('e4r5','front busy')
+        self.raw = self.raw.replace('e5r6','right1 sensing')
+        self.raw = self.raw.replace('e5r8','right2 sensing')
+        self.raw = self.raw.replace('e5r12','right3 sensing')
+        self.raw = self.raw.replace('e5r14','nothing on right1')
+        self.raw = self.raw.replace('e6r7','left1 sensing')
+        self.raw = self.raw.replace('e6r9','left2 sensing')
+        self.raw = self.raw.replace('e6r11','left3 sensing')
+        self.raw = self.raw.replace('e6r13','nothing on left1')
+        self.raw = self.raw.replace('e1','move forward')
+        self.raw = self.raw.replace('e2','turn left')
+        self.raw = self.raw.replace('e3','turn right')
+        self.raw = self.raw.replace('e4','front?')
+        self.raw = self.raw.replace('e5','right?')
+        self.raw = self.raw.replace('e6','left?')
+        return self.raw
+
 
 """ A class to track black_board.variables """
 class BlackBoard:
@@ -94,23 +127,22 @@ class BlackBoard:
         return coefficients
         
     def right_wall_param(self, y):
-        y = y[0:200]
+        #pdb.set_trace()
         coefficients = self.regression(y)
         # approximate wall_angle (degrees)
         black_board.right_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
-        if coefficients[1] != 5.0:
+        if coefficients[1] < 5.0:
             black_board.distance_to_right_wall = coefficients[1]/2
         else:
             black_board.distance_to_right_wall = coefficients[1]
         
     def left_wall_param(self, y):
-        y = y[438:639]
         coefficients = self.regression(y)
         # approximate wall_angle (degrees)
         black_board.left_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
-        if coefficients[1] != 5.0:
+        if coefficients[1] < 5.0:
             black_board.distance_to_left_wall = coefficients[1]/2
         else:
             black_board.distance_to_left_wall = coefficients[1]
@@ -121,11 +153,14 @@ class BlackBoard:
         # Subscribe the /base_scan topic to get the range readings  
         rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, self.scan_callback, queue_size = 10)
         rospy.sleep(0.1)
-        if min(black_board.kinect_scan) < 1.2:
+        if min(black_board.kinect_scan[300:338]) < 1.2:
             black_board.driving_forward = False
         else:
             black_board.driving_forward = True
         rospy.loginfo("laser_scan done")
+        
+    def scan_callback(self, msg):
+        black_board.kinect_scan = list(msg.ranges) # transform to list since ranges is a tuple
         
     def formule(self, L, tolerance):
         f = 0
@@ -173,7 +208,7 @@ class BlackBoard:
                 return 1
             
             self.laser_scan()
-            if black_board.driving_forward:
+            if black_board.driving_forward or black_board.adv_distance == 0.0:
                 (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, black_board.adv_angle, da=True)
                 black_board.adv_angle = 0.0
                 black_board.print_position()
@@ -184,11 +219,11 @@ class BlackBoard:
                 black_board.move_fail = False
             else:
                 rospy.loginfo("move_adv failed.")
-                (black_board.agent_position, black_board.agent_rotation) = advance(-1.0, 0.0, da=True)
+                (black_board.agent_position, black_board.agent_rotation) = advance(0.0, 0.0, da=True)
                 black_board.move_fail = True
         except:
             rospy.loginfo("move_adv failed.")
-            (black_board.agent_position, black_board.agent_rotation) = advance(-1.0, 0.0, da=True)
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, 0.0, da=True)
             black_board.move_fail = True
             return 1
         return 1
@@ -198,106 +233,99 @@ class BlackBoard:
         #pdb.set_trace()
         self.laser_scan()
         rospy.sleep(2)
-        tolerance = 0.1
+
         y = list()
         y = black_board.kinect_scan
         #black_board.plotter(black_board.kinect_scan)
-        black_board.filtered_scan = self.moving_window_filtro(y[0:200], tolerance, n_neighbors=1)[0]
-        # returns the reading has the discontinuity
-        black_board.right_singularity = self.moving_window_filtro(y[0:200], tolerance, n_neighbors=1)[1]
-        print "right singularities: ", black_board.right_singularity
-        #black_board.plotter(black_board.filtered_scan, "Right")
-        singular_readings = []
-        stretches = []
-        for i in black_board.right_singularity:
-            stretches.append(sum(y[0:i])/len(y[0:i]))
-            singular_readings.append(y[i])
-        print "right singular readings: ", singular_readings
-        print "right stretches: ", stretches
-        black_board.right_wall_param(y)
+        y1 = y[0:65]
+        y2 = y[65:130]
+        y3 = y[130:200]
+        
+        black_board.right_wall_param(y1)
         agent_rotation_angle = quat_to_angle(black_board.agent_rotation)
         print "odom_angle: ", math.degrees(normalize_angle(agent_rotation_angle))
         print "wall_angle: ", black_board.right_wall_angle
         #update average_distance_to_right_wall
-        black_board.average_distance_to_right_wall = sum(y[0:200]) / 200.
+        black_board.average_distance_to_right_wall = sum(y1)/65.
         print "average distance to right wall: ", black_board.average_distance_to_right_wall
         print bcolors.OKGREEN + "distance to right wall(coefficients[1]): " +  str(black_board.distance_to_right_wall) + bcolors.ENDC
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_right_wall < 4.5:
-            rospy.loginfo(bcolors.OKGREEN + "Right sensing" + bcolors.ENDC)
-            black_board.Right = True
-            black_board.adv_distance = 1.0
-            
-            l = [r for r in y[0:200]  if r != 5.0]
-            right_length = len(l)
-            
-            #pdb.set_trace()   
-            if right_length < black_board.Right_Length and black_board.Right_Length != 200:
-                print bcolors.OKGREEN + "RIGHT SHORTEN" + bcolors.ENDC
-                print bcolors.OKGREEN + "CORNER NEXT at: " + str(black_board.Right_Length) + " length" + bcolors.ENDC
-                black_board.adv_distance = 1.0
-                
-            black_board.Right_Length = right_length
-            if black_board.Right_Length == 0:
-                black_board.Right = False
-                black_board.Right_Corner = True
-                black_board.Right_Length = 200
+            rospy.loginfo(bcolors.OKGREEN + "Right1 sensing" + bcolors.ENDC)
+            black_board.Right1 = True
+            black_board.adv_distance = 1.0            
+            #pdb.set_trace()
         else:
-            rospy.loginfo(bcolors.OKGREEN + "Nothing on the right" + bcolors.ENDC)
-            black_board.Right = False
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the right1" + bcolors.ENDC)
+            black_board.Right1 = False
             #black_board.Right_Corner = False
+            
+        av_distance2 = sum(y2)/65.
+        if av_distance2 < 4.5:
+            rospy.loginfo(bcolors.OKGREEN + "Right2 sensing" + bcolors.ENDC)
+            black_board.Right2 = True
+        else:
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the right2" + bcolors.ENDC)
+            black_board.Right2 = False
+            
+        av_distance3 = sum(y3)/70.
+        if av_distance3 < 4.5:
+            rospy.loginfo(bcolors.OKGREEN + "Right3 sensing" + bcolors.ENDC)
+            black_board.Right3 = True
+        else:
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the right3" + bcolors.ENDC)
+            black_board.Right3 = False
+        
         return 1
     
     def left_status(self):
         rospy.loginfo("Estoy en left status")
         self.laser_scan()
         rospy.sleep(2)
-        tolerance = 0.1
+        
         y = list()
         y = black_board.kinect_scan
         #black_board.plotter(black_board.kinect_scan)
-        black_board.filtered_scan = self.moving_window_filtro(y[438:-1], tolerance, n_neighbors=1)[0]
-        # returns the reading has the discontinuity
-        black_board.left_singularity = self.moving_window_filtro(y[438:-1], tolerance, n_neighbors=1)[1]
-        black_board.left_singularity = [x+438 for x in black_board.left_singularity]
-        print "left singularities: ", black_board.left_singularity
-        #black_board.plotter(black_board.filtered_scan, "Left")
-        singular_readings = []
-        for i in black_board.left_singularity:
-            singular_readings.append(y[i])
-        print "left singular readings: ", singular_readings
-        black_board.left_wall_param(y)
+        
+        y1 = y[574:639]
+        y2 = y[508:574]
+        y3 = y[438:508]
+        
+        black_board.right_wall_param(y1)
         agent_rotation_angle = quat_to_angle(black_board.agent_rotation)
         print "odom_angle: ",  math.degrees(normalize_angle(agent_rotation_angle))
         print "wall_angle: ", black_board.left_wall_angle
         #update average_distance_to_left_wall
-        black_board.average_distance_to_left_wall = sum(y[438:-1])/200.
+        black_board.average_distance_to_left_wall = sum(y1)/65.
         print "average distance to left wall: ", black_board.average_distance_to_left_wall
         print "distance to left wall(coefficients[1]): ", black_board.distance_to_left_wall
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_left_wall < 4.5:
-            rospy.loginfo("Left sensing")
-            black_board.Left = True
+            rospy.loginfo("Left sensing1")
+            black_board.Left1 = True
             black_board.adv_distance = 1.0
-            
-            l = [r for r in y[438:-1] if r!=5.0]
-            left_length = len(l)
-            
-            if left_length < black_board.Left_Length and black_board.Left_Length != 200:
-                
-                print bcolors.OKGREEN + "LEFT APPEARS" + bcolors.ENDC
-                print bcolors.OKGREEN + "LEFT NEXT at: " + str(black_board.Left_Length) + " reading" + bcolors.ENDC
-                black_board.Left = True
-                black_board.Left_Corner = True
-                black_board.adv_distance = 1.0
-                
-            black_board.Left_Length = left_length
         else:
-            rospy.loginfo(bcolors.OKGREEN + "Nothing on the left" + bcolors.ENDC)
-            black_board.Left = False
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the left1" + bcolors.ENDC)
+            black_board.Left1 = False
+
+        av_distance2 = sum(y2)/65.
+        if av_distance2 < 4.5:
+            rospy.loginfo(bcolors.OKGREEN + "Left2 sensing" + bcolors.ENDC)
+            black_board.Left2 = True
+        else:
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the left2" + bcolors.ENDC)
+            black_board.Left2 = False
             
-    def scan_callback(self, msg):
-        black_board.kinect_scan = list(msg.ranges) # transform to list since ranges is a tuple
+        av_distance3 = sum(y3)/70.
+        if av_distance3 < 4.5:
+            rospy.loginfo(bcolors.OKGREEN + "Left3 sensing" + bcolors.ENDC)
+            black_board.Left3 = True
+        else:
+            rospy.loginfo(bcolors.OKGREEN + "Nothing on the left3" + bcolors.ENDC)
+            black_board.Left3 = False
+            
+        return 1
+
 
 # Initialize the blackboard
 black_board = BlackBoard()
@@ -314,11 +342,16 @@ black_board.move_fail = False
 black_board.distance_to_right_wall = 1.5
 black_board.last_distance = 1.5
 black_board.distance_to_left_wall = 5.0
+black_board.left_wall_angle = 0.0
 black_board.distance_to_front = 7.0
 black_board.Front = False
 black_board.Front_All = False
-black_board.Left = False
-black_board.Right = False
+black_board.Left1 = False
+black_board.Left2 = False
+black_board.Left3 = False
+black_board.Right1 = False
+black_board.Right2 = False
+black_board.Right3 = False
 black_board.Right_Corner = False
 black_board.Right_Length = 200
 black_board.Left_Length = 200
@@ -326,68 +359,85 @@ black_board.Left_Length = 200
 black_board.odom_angle = 0.0
 
 black_board.chs = 1     # used to change the sign(+/-) of the PI/2 turn
-black_board.agent_mechanism = ''
+black_board.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms
+black_board.process_boredom = False
 
 
-class EcaAgent00:
-    
+class EcaAgent02:
+    INTERACTION_ENACTION_HISTORY_SIZE = 50
     def __init__(self):
-        
         #pdb.set_trace()
-        rospy.init_node("eca_agent00_tree")
+        rospy.init_node("eca_agent01_tree")
         # Set the shutdown function (stop the agent)
         rospy.on_shutdown(self.shutdown)
         # Publisher to manually control the agent (e.g. to stop it)
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=5)
-        
-#        self.laser_scan()
+
         rate = rospy.Rate(10)
 
          # initialize existence
-        ex = None
+        black_board.ex = None
         # initialize primitive interactions
-        primitive_interactions = {"move forward": ("e1", "r1", 10),\
-                                  "move forward fail": ("e1", "r10", -10),\
-                                  "turn left": ("e2", "r2", -5),\
-                                  "turn right": ("e3", "r3", -2),\
-                                  "front free": ("e4", "r4", -2),\
-                                  "front busy": ("e4", "r5", -2),\
-                                  "right sensing": ("e5", "r6", 10),\
-                                  "nothing on right": ("e5", "r8", -5),\
-                                  "left sensing": ("e6", "r7", -2),\
-                                  "nothing on left": ("e6", "r9", -2)}
+        primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
+                                  "move forward": ("e1", "r4", -20),\
+                                  "move forward fail": ("e1", "r10", -50),\
+                                  "turn left": ("e2", "r2", 15),\
+                                  "turn right": ("e3", "r3", 25),\
+#                                  "front free": ("e4", "r4", 1),\
+#                                  "front busy": ("e4", "r5", -2),\
+                                  "right1 sensing": ("e5", "r6", 20),\
+                                  "right2 sensing": ("e5", "r8", 10),\
+                                  "right3 sensing": ("e5", "r12", 10),\
+                                  "nothing on right1": ("e5", "r14", -50),\
+                                  "left1 sensing": ("e6", "r7", 0),\
+                                  "left2 sensing": ("e6", "r9", 0),\
+                                  "left3 sensing": ("e6", "r11", 0),\
+                                  "nothing on left1": ("e6", "r13", 0)
+}
         # initialize environments and existences
         self.mechanism = black_board.agent_mechanism
         if self.mechanism == "simple":
-            environment = Environment()
-            ex = Existence(primitive_interactions, environment)
+            black_board.environment = Environment()
+            black_board.ex = Existence(primitive_interactions, black_board.environment)
         elif self.mechanism == "recursive":
-            environment = Environment()
-            ex = RecursiveExistence(primitive_interactions, environment)
+            black_board.environment = Environment()
+            black_board.ex = RecursiveExistence(primitive_interactions, black_board.environment)
         elif self.mechanism == "constructive":
-            environment = ConstructiveEnvironment()
-            ex = ConstructiveExistence(primitive_interactions, environment)
+            black_board.environment = ConstructiveEnvironment()
+            black_board.ex = ConstructiveExistence(primitive_interactions, black_board.environment)
         # Create the root node
-        ECAAGENT00 = Sequence("ECAAGENT00")
+        ECAAGENT02 = Sequence("ECAAGENT02")
         
-        START_STEP = CallbackTask("START STEP", ex.step)
+        START_STEP = CallbackTask("START STEP", black_board.ex.step)
         
         I_F_IS_VISITED =IgnoreFailure("I_F IS VISITED")
         
         IS_VISITED = CallbackTask("is visited", self.is_visited)
         
-        ECAAGENT00.add_child(START_STEP)
-        ECAAGENT00.add_child(I_F_IS_VISITED)
+        ECAAGENT02.add_child(START_STEP)
+        ECAAGENT02.add_child(I_F_IS_VISITED)
         
         # Display the tree before beginning execution
-        print bcolors.HEADER + "ECAAGENT00 Behavior Tree" + bcolors.ENDC
-        print_tree(ECAAGENT00, indent=0, use_symbols=True)
-        print_dot_tree(ECAAGENT00, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree.dot')
+        print bcolors.HEADER + "ECAAGENT02 Behavior Tree" + bcolors.ENDC
+        print_tree(ECAAGENT02, indent=0, use_symbols=True)
+        print_dot_tree(ECAAGENT02, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree02.dot')
+        
         # Run the tree
         while not rospy.is_shutdown():
-            ECAAGENT00.run()
-            print bcolors.OKGREEN + str(black_board.sim_step) + black_board.step_trace + bcolors.ENDC
+            #pdb.set_trace()
+            ECAAGENT02.run()
+            decoded = Decode(black_board.step_trace)
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + str(black_board.sim_step) + " " +  str(translated) + bcolors.ENDC
             print "\n"
+            
+            #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
+            
+            if len(black_board.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
+                black_board.ex.INTERACTIONS.popitem(last=False)
+                
+            if black_board.sim_step >= 3:
+                black_board.process_boredom = True
             black_board.sim_step += 1
             rate.sleep()
 
@@ -516,9 +566,9 @@ class Existence:
     When a given experiment is performed and a given result is obtained, 
     the corresponding interaction is considered enacted.
     """
-    EXPERIMENTS = dict()
-    INTERACTIONS = dict()
-    RESULTS = dict()
+    EXPERIMENTS = OrderedDict()
+    INTERACTIONS = OrderedDict()
+    RESULTS = OrderedDict()
 
     def __init__(self, primitive_interactions, environment):
         """
@@ -534,6 +584,7 @@ class Existence:
         self.context_interaction = None
         self.mood = None
         self.environment = environment
+        self.primitive_interactions = primitive_interactions
         self.initialize_interactions(primitive_interactions)
         
     def step(self):
@@ -541,6 +592,7 @@ class Existence:
         Execute a single simulation step.
         :return: (str) performed interaction and mood
         """
+        #pdb.set_trace
         print bcolors.OKGREEN + "Context: " + str(self.context_interaction) + bcolors.ENDC
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
@@ -558,6 +610,7 @@ class Existence:
         self.context_interaction = enacted_interaction
 
         black_board.step_trace = experiment.get_label() + result.get_label() + " " + self.mood
+        
         return 1
 
     def initialize_interactions(self, primitive_interactions):
@@ -603,10 +656,11 @@ class Existence:
         :param context_interaction: (Interaction) at time t-1
         :param enacted_interaction: (Interaction) just performed
         """
+        #pdb.set_trace
         if context_interaction is not None:
             label = context_interaction.get_label() + enacted_interaction.get_label()
             if label not in self.INTERACTIONS:
-                # valence is a sum of primitive interactions
+                # valence is a sum of the two valences of both primitive interactions
                 valence = context_interaction.get_valence() + enacted_interaction.get_valence()
                 interaction = Interaction(label)
                 interaction.set_pre_interaction(context_interaction)
@@ -624,6 +678,7 @@ class Existence:
         Anticipate possible interactions based on current context.
         :return: (list) of Anticipations
         """
+        #pdb.set_trace
         anticipations = []
         if self.context_interaction is not None:
             activated_interactions = self.get_activated_interactions()
@@ -652,6 +707,7 @@ class Existence:
 
     def select_experiment(self, anticipations):
         """Select experiment from proposed anticipations"""
+        #pdb.set_trace
         if len(anticipations) > 0:
             #anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by proclivity
             anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
@@ -666,14 +722,23 @@ class Existence:
                 print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
         else:
             # if nothing was anticipated, choose at random
-            chosen_experiment = self.get_random_experiment(None)
+            # we have decided to use the max valence interaction instead
+            valence_max = 0.0
+            for interaction in self.primitive_interactions:
+                valence = self.primitive_interactions[interaction][2]
+                if valence_max < valence:
+                    valence_max = valence
+                    experiment = self.primitive_interactions[interaction][0]
+            chosen_experiment = self.EXPERIMENTS[experiment]
+            #chosen_experiment = self.get_random_experiment(None)
             print bcolors.OKGREEN + "Don't know what to do, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
         return chosen_experiment
 
     def get_random_experiment(self, interaction):
         random_experiment = random.choice(self.EXPERIMENTS.values())
         if interaction is None:
-            return random_experiment
+            return self.EXPERIMENTS['e1']
+            #return 'e1'
         else:
             # trying to choose a random experiment but avoid choosing one that was part of the rejected interaction
             bad_experiment = interaction.get_experiment()
@@ -681,7 +746,7 @@ class Existence:
             while chosen_experiment == bad_experiment:
                 chosen_experiment = random.choice(self.EXPERIMENTS.values())
             return random_experiment
-
+            #return 'e1'
     def addget_result(self, label):
         if label not in self.RESULTS:
             self.RESULTS[label] = Result(label)
@@ -722,7 +787,15 @@ class RecursiveExistence(Existence):
 
     def step(self):
         #pdb.set_trace()
-        print bcolors.OKGREEN + "Memory: ", str(self.INTERACTIONS.keys()) + bcolors.ENDC
+        print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
+        # translate the coded way of interactions in its clear meaning
+        for i in self.INTERACTIONS:
+            decoded = Decode(str(i))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + translated + bcolors.ENDC
+        print "\n"
+        #raw_input(bcolors.OKGREEN + "Press ENTER to continue..." + bcolors.ENDC)
+        
         anticipations = self.anticipate()
         for anticipation in anticipations:
             print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
@@ -750,6 +823,16 @@ class RecursiveExistence(Existence):
         # learn context_pair_interaction, context_interaction, enacted_interaction
         self.learn_recursive_interaction(enacted_interaction)
         black_board.step_trace = enacted_interaction.__repr__() + " " + self.mood
+        
+#        print self.EXPERIMENTS
+#        print "\n"
+#        print self.INTERACTIONS
+#        print "\n"
+#        print self.RESULTS
+#        print "\n"
+#        
+#        raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
+        
         return 1
 
     def initialize_interactions(self, primitive_interactions):
@@ -885,6 +968,7 @@ class RecursiveExistence(Existence):
         self.set_context_pair_interaction(enacted_pair_interaction)
 
     def addreinforce_composite_interaction(self, pre_interaction, post_interaction):
+        #pdb.set_trace
         composite_interaction = self.addget_composite_interaction(pre_interaction, post_interaction)
         composite_interaction.increment_weight()
 
@@ -900,6 +984,7 @@ class RecursiveExistence(Existence):
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
+        pdb.set_trace
         label = "<" + pre_interaction.get_label() + post_interaction.get_label() + ">"
         interaction = self.get_interaction(label)
         if interaction is None:
@@ -926,8 +1011,15 @@ class ConstructiveExistence(RecursiveExistence):
 
     # Existence 50.2
     def step(self):
-        # print "Memory: ", self.INTERACTIONS.keys()
-        print bcolors.OKGREEN + "Memory: ", str(self.INTERACTIONS.keys()) + bcolors.ENDC
+        #pdb.set_trace
+        print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
+        for i in self.INTERACTIONS:
+            decoded = Decode(str(i))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + translated + bcolors.ENDC
+        print "\n"
+        #raw_input(bcolors.OKGREEN + "Press ENTER to continue..." + bcolors.ENDC)
+        
         anticipations = self.anticipate()
         for anticipation in anticipations:
             print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
@@ -948,6 +1040,16 @@ class ConstructiveExistence(RecursiveExistence):
 
         self.learn_recursive_interaction(enacted_interaction)
         black_board.step_trace = enacted_interaction.__repr__() + " " + self.mood
+        
+#        print self.EXPERIMENTS
+#        print "\n"
+#        print self.INTERACTIONS
+#        print "\n"
+#        print self.RESULTS
+#        print "\n"
+#        
+#        raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
+        
         return 1
 
     def initialize_interactions(self, primitive_interactions):
@@ -967,6 +1069,7 @@ class ConstructiveExistence(RecursiveExistence):
         """
         All experiments are now abstract, namely they are interactions.
         """
+        #pdb.set_trace
         label = interaction.get_label().upper()
         if label not in self.EXPERIMENTS:
             abstract_experiment = RecursiveExperiment(label)
@@ -982,6 +1085,7 @@ class ConstructiveExistence(RecursiveExistence):
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
+        #pdb.set_trace
         label = "<" + pre_interaction.get_label() + post_interaction.get_label() + ">"
         interaction = self.get_interaction(label)
         if interaction is None:
@@ -995,6 +1099,7 @@ class ConstructiveExistence(RecursiveExistence):
 
     # Existence 50.2
     def anticipate(self):
+        #pdb.set_trace
         anticipations = self.get_default_anticipations()
         print bcolors.OKGREEN + "Default anticipations: " + str(anticipations) + bcolors.ENDC
         activated_interactions = self.get_activated_interactions()
@@ -1040,6 +1145,7 @@ class ConstructiveExistence(RecursiveExistence):
         return anticipations
 
     def enact(self, intended_interaction):
+        #pdb.set_trace
         # if interaction is primivite, consult the world and get what was actually enacted
         if intended_interaction.is_primitive():
             enacted_interaction_label = self.environment.enact_primitive_interaction(intended_interaction)
@@ -1072,11 +1178,108 @@ class ConstructiveExistence(RecursiveExistence):
         else:
             bad_experiment = interaction.get_experiment()
             chosen_experiment = random_interaction.get_experiment()
-            while chosen_experiment == bad_experiment:
+            #while chosen_experiment == bad_experiment:
+            while chosen_experiment != 'e1':    
                 random_interaction = random.choice(self.INTERACTIONS.values())
             return random_interaction
 
-        
+
+class Interaction:
+    """
+    An interaction is a basic sensorimotor pattern available to the agent.
+    An interaction can be primitive or composite. If primitive, it is an association of experiment and result.
+    If composite, it has pre- and post-interaction parts.
+    Each interaction has valence and weight.
+    """
+    def __init__(self, label):
+        self.label = label
+        self.valence = 0
+        self.experiment = None
+        self.result = None
+        self.meaning = None
+        self.weight = 0
+        self.pre_interaction = None
+        self.post_interaction = None
+        self.alternative_interactions = []
+
+    def get_label(self):
+        return self.label
+
+    def get_experiment(self):
+        return self.experiment
+
+    def set_experiment(self, experiment):
+        self.experiment = experiment
+
+    def get_result(self):
+        return self.result
+
+    def set_result(self, result):
+        self.result = result
+
+    def get_valence(self):
+        #pdb.set_trace
+        if black_board.process_boredom:
+            return boredom_handler.process_boredom(black_board.ex.INTERACTIONS, self, self.valence)
+        else:
+            if self.is_primitive():
+                return self.valence
+            else:
+                pre = self.get_pre_interaction()
+                post = self.get_post_interaction()
+                self.valence = pre.get_valence() + post.get_valence()
+                return self.valence
+
+    def set_valence(self, valence):
+        self.valence = valence
+
+    def get_meaning(self):
+        return self.meaning
+
+    def set_meaning(self, meaning):
+        self.meaning = meaning
+
+    def get_pre_interaction(self):
+        return self.pre_interaction
+
+    def set_pre_interaction(self, pre_interaction):
+        self.pre_interaction = pre_interaction
+
+    def get_post_interaction(self):
+        return self.post_interaction
+
+    def set_post_interaction(self, post_interaction):
+        self.post_interaction = post_interaction
+
+    def is_primitive(self):
+        return self.pre_interaction is None
+
+    def get_weight(self):
+        return self.weight
+
+    def increment_weight(self):
+        self.weight += 1
+
+    def add_alternative_interaction(self, interaction):
+        if interaction not in self.alternative_interactions:
+            self.alternative_interactions.append(interaction)
+
+    def get_alternative_interactions(self):
+        return self.alternative_interactions
+    
+    def unwrap(self):
+        if self.is_primitive():
+            return[self]
+        else:
+            """
+            Unwrap the composite interaction.
+            :return: A list of primitive interactions.
+            """
+            return self.get_pre_interaction().unwrap() + self.get_post_interaction().unwrap()
+
+    def __repr__(self):
+        return "{0}, valence {1}, weight {2}".format(self.get_label(), self.get_valence(), self.get_weight())
+       
 
 class Environment:
     """
@@ -1094,14 +1297,17 @@ class Environment:
         """
         result = None
         black_board.laser_scan()
+        black_board.right_status()
         if experiment.get_label() == 'e1':
             black_board.adv_distance = 1.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
-            if black_board.move_fail:
-                result = 'r1'  # moved forward
+            if not black_board.move_fail and black_board.Right1:
+                result = 'r1'  # moved forward following a wall on the right
+            elif not black_board.move_fail:
+                result = 'r4'  # moving forward sensing no wall 
             else:
-                result = 'r10' # move failed
+                result = 'r10' # move failed: if move bump 
         elif experiment.get_label() == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
@@ -1114,21 +1320,21 @@ class Environment:
             result = 'r3'   # turn right
         elif experiment.get_label() == 'e4':
             if black_board.driving_forward:
-                result = 'r4'  # front free
+                result = 'r4'  # front free: no wall
             else:
-                result = 'r5'  # front busy
+                result = 'r5'  # front busy: wall in front
         elif experiment.get_label() == 'e5':
             black_board.right_status()
-            if black_board.Right:
-                result = 'r6'   # right sensing
+            if black_board.Right1:
+                result = 'r6'   # right sensing: wall on the right
             else:
-                result = 'r8'   # nothing on the right
+                result = 'r14'   # nothing on the right
         elif experiment.get_label() == 'e6':
             black_board.left_status()
-            if black_board.Left:
-                result = 'r7'   # left sensing
+            if black_board.Left1:
+                result = 'r7'   # left sensing: wall on the left
             else:
-                result = 'r9'   # nothing on the left
+                result = 'r13'   # nothing on the left
 
         self.last_result = result
         return result
@@ -1154,14 +1360,17 @@ class ConstructiveEnvironment:
         experiment = intended_interaction.get_label()[:2]
         result = None
         black_board.laser_scan()
+        black_board.right_status()
         if experiment == 'e1':
             black_board.adv_distance = 1.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
-            if black_board.move_fail:
-                result = 'r1'  # moved forward
+            if not black_board.move_fail and black_board.Right1:
+                result = 'r1'   # moved forward following a wall on the right
+            elif not black_board.move_fail:
+                result = 'r4'  # moving forward sensing no wall    
             else:
-                result = 'r10' # move failed
+                result = 'r10' # move failed: if move bump 
         elif experiment == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
@@ -1174,30 +1383,171 @@ class ConstructiveEnvironment:
             result = 'r3'   # turn right
         elif experiment == 'e4':
             if black_board.driving_forward:
-                result = 'r4'  # front free
+                result = 'r4'  # front free: no wall
             else:
-                result = 'r5'  # front busy
+                result = 'r5'  # front busy: wall in front
         elif experiment == 'e5':
             black_board.right_status()
-            if black_board.Right:
-                result = 'r6'   # right sensing
+            if black_board.Right1:
+                result = 'r6'   # right sensing: wall on the right
             else:
-                result = 'r8'   # nothing on the right
+                result = 'r14'   # nothing on the right
         elif experiment == 'e6':
             black_board.left_status()
-            if black_board.Left:
-                result = 'r7'   # left sensing
+            if black_board.Left1:
+                result = 'r7'   # left sensing: wall on the left
             else:
-                result = 'r9'   # nothing on the left
-
+                result = 'r13'   # nothing on the left
+                
         enacted_interaction = experiment+result
         self.last_interaction = enacted_interaction
 
         return enacted_interaction
+ 
+    
+# class that represent an agent's boredom handler.    
+class BoredomHandler(object):
+    """
+    Abstract boredom handler class.
+    """
+    @abc.abstractmethod
+    def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
+        """
+        Modifies the valence of an interaction such that boredom is handled.
 
+        :param INTERACTIONS: The interaction memory
+        :param interaction: The interaction to process boredom for
+        :param unmodified_valence: The unmodified (raw) valence of the interaction
+        :return: The modified valence taking boredom into account
+        """
+        raise NotImplementedError("Should be implemented by child")
+
+
+class PassthroughBoredomHandler(BoredomHandler):
+    """
+    A boredom handler not implementing any boredom measures.
+    """
+    def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
+        return unmodified_valence
+
+class WeightBoredomHandler(BoredomHandler):
+    """
+    A boredom handler taking into account the weight of interactions. The sum
+    of the hierarchical weight of an interaction is calculated, and its
+    contribution to the total weight is calculated. This is used to discount
+    interactions that have a high contribution.
+    """
+    def interaction_total_weight(self, INTERACTIONS, interaction):
+        """
+        Get the total (hierarchical) weight of an interaction. This takes the
+        sum of all weights of all interactions inside the hierarchy of this
+        interaction. E.g., for a composite interaction <i1, i2> the sum is
+        weight(<i1, i2>) = <i1, i2>.weight + weight(i1) + weight(i2).
+
+        :param INTERACTIONS: The interaction memory
+        :param interaction: The interaction to get the hierarchical weight for
+        :return: The hierarchical weight of the interaction
+        """
+        if interaction.is_primitive():
+            return interaction.get_weight()
+        else:
+            return (
+                interaction.get_weight() 
+                + self.interaction_total_weight(INTERACTIONS, interaction.get_pre_interaction()) 
+                + self.interaction_total_weight(INTERACTIONS, interaction.get_post_interaction())
+            )
+    
+    def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
+        if unmodified_valence > 0:
+            
+            sum = 0
+            for key in INTERACTIONS:
+                sum += INTERACTIONS[key].get_weight()
+            weight = self.interaction_total_weight(INTERACTIONS, interaction)
+            modifier = (1 - float(weight)/float(sum))
+            return unmodified_valence * modifier
+        else:
+            return unmodified_valence
+
+class RepetitiveBoredomHandler(BoredomHandler):
+    """
+    A boredom handler taking into the account the last few (primitive)
+    interactions enacted by the agent, and compares the similarity of those
+    with the proposed interaction. The more similar, the more the interaction
+    is penalized.
+    """
+    
+    HISTORY_CONSIDER_SIZE = 15
+
+    def count_interactions(self, interaction_sequence):
+        """
+        Count the interaction occurrences in a sequence.
+        :param interaction_sequence: The interaction sequence
+        :return: A Counter (dictionary) object mapping from interactions to
+                 their frequency in the sequence.
+        """
+        count = Counter()
+        for interaction_ in interaction_sequence:
+            count[interaction_] += 1
+
+        return count
+
+    def similarity(self, count1, count2):
+        """
+        Calculate the cosine similarity between two counts (Counter dictionaries, seen as vectors).
+        :param count1: The first interaction count
+        :param count2: The second interaction count
+        :return: The cosine similarity between the two counts
+        """
+        c1_dot_c2 = 0
+        c1_len_squared = 0
+        c2_len_squared = 0
+
+        for interaction_name in count1:
+            c1_dot_c2 += count1[interaction_name] * count2[interaction_name]
+            c1_len_squared += count1[interaction_name]**2
+
+        for interaction_name in count2:
+            c2_len_squared += count2[interaction_name]**2
+
+        if c1_len_squared == 0:
+            return -1
+        else:
+            return c1_dot_c2 / (math.sqrt(c1_len_squared) * math.sqrt(c2_len_squared))
+
+    def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
+        #pdb.set_trace()
+        history = INTERACTIONS.keys()[-self.HISTORY_CONSIDER_SIZE:]
+        history_count = self.count_interactions(history)
+        interaction_count = self.count_interactions(interaction.unwrap())
+
+        similarity = self.similarity(history_count, interaction_count)
+        modifier = 1 - similarity
+
+        return unmodified_valence * modifier
+
+class WeightRepetitiveBoredomHandler(BoredomHandler):
+    """
+    A boredom handler combining the weight boredom handler and repetitive
+    boredom handler by taking the average valence output of the two.
+    """
+    def __init__(self):
+        self.weightBoredomHandler = WeightBoredomHandler()
+        self.repetitiveBoredomHandler = RepetitiveBoredomHandler()
+
+    def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
+        return (
+            self.weightBoredomHandler.process_boredom(INTERACTIONS, interaction, unmodified_valence)
+            +
+            self.repetitiveBoredomHandler.process_boredom(INTERACTIONS, interaction, unmodified_valence)
+            )/2
+
+# the kind of boredom handler is going to be used
+boredom_handler = RepetitiveBoredomHandler()
+    
 if __name__ == '__main__':
     #pdb.set_trace()
-    # run with  i.e. rosrun eca_agent00.py constructive
+    # run with  i.e. rosrun eca_agent01.py constructive
     parser = argparse.ArgumentParser()
     parser.add_argument("mechanism", type=str, help="specify the learning mechanism to be used",
                         choices=["simple", "recursive", "constructive"])
@@ -1205,5 +1555,5 @@ if __name__ == '__main__':
     
     black_board.agent_mechanism = args.mechanism
     
-    tree = EcaAgent00()
+    tree = EcaAgent02()
   

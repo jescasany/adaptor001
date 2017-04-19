@@ -1,0 +1,16 @@
+primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
+                                  "move forward": ("e1", "r4", 0),\
+                                  "move forward fail": ("e1", "r10", -50),\
+                                  "turn left": ("e2", "r2", 5),\
+                                  "turn right": ("e3", "r3", 25),\
+#                                  "front free": ("e4", "r4", 1),\
+#                                  "front busy": ("e4", "r5", -2),\
+                                  "right1 sensing": ("e5", "r6", 20),\
+                                  "right2 sensing": ("e5", "r8", 10),\
+                                  "right3 sensing": ("e5", "r12", 5),\
+                                  "nothing on right1": ("e5", "r14", -50),\
+                                  "left1 sensing": ("e6", "r7", 0),\
+                                  "left2 sensing": ("e6", "r9", 0),\
+                                  "left3 sensing": ("e6", "r11", 0),\
+                                  "nothing on left1": ("e6", "r13", 0)
+}
