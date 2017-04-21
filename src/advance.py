@@ -7,12 +7,12 @@
 
     Based on odom_out_and_back.py from rbx1 apps
 """
-
+import pdb
 import rospy
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
-from math import radians, sqrt, pow
+from math import radians, degrees, sqrt, pow
 
 def advance(distance, angle, da = True):
     """ Publisher to control the robot's speed """
@@ -34,7 +34,7 @@ def advance(distance, angle, da = True):
     else:
         angular_speed = 0.5
     # Set the angular tolerance in degrees converted to radians
-    angular_tolerance = radians(1.0)
+    angular_tolerance = radians(0.5)
     # Set the rotation angle to angle in radians 
     goal_angle = angle
     # Initialize the tf listener
@@ -99,6 +99,7 @@ def advance(distance, angle, da = True):
         last_angle = quat_to_angle(rotation)
         # Track how far we have turned
         turn_angle = 0
+        done = False
         while abs(turn_angle + angular_tolerance) < abs(goal_angle) and not rospy.is_shutdown():
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
@@ -110,6 +111,26 @@ def advance(distance, angle, da = True):
             # Add to the running total
             turn_angle += delta_angle
             last_angle = quat_to_angle(rotation)
+#            print "x", position.x
+#            print "y", position.y
+#            print "la", last_angle
+#            print "ta", degrees(turn_angle)
+#            print "\n"
+            #raw_input()
+            if abs(turn_angle + angular_tolerance) > abs(goal_angle*4/5) and not done:
+                #pdb.set_trace()
+                # Stop the robot before the next leg
+                move_cmd = Twist()
+                cmd_vel_pub.publish(move_cmd)
+                rospy.sleep(1)
+                if angle < 0.0:
+                    angular_speed = -0.05
+                else:
+                    angular_speed = 0.05
+                # Set the movement command to a rotation
+                move_cmd.angular.z = angular_speed
+                done = True
+                
         # Stop the robot before the next leg
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)

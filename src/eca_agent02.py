@@ -148,7 +148,7 @@ class BlackBoard:
             black_board.distance_to_left_wall = coefficients[1]
             
     def laser_scan(self):
-        rospy.loginfo("Waiting for /base_scan topic...")
+        #rospy.loginfo("Waiting for /base_scan topic...")
         rospy.wait_for_message('/base_scan', sensor_msgs.msg.LaserScan)
         # Subscribe the /base_scan topic to get the range readings  
         rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, self.scan_callback, queue_size = 10)
@@ -157,7 +157,7 @@ class BlackBoard:
             black_board.driving_forward = False
         else:
             black_board.driving_forward = True
-        rospy.loginfo("laser_scan done")
+        #rospy.loginfo("laser_scan done")
         
     def scan_callback(self, msg):
         black_board.kinect_scan = list(msg.ranges) # transform to list since ranges is a tuple
@@ -230,7 +230,7 @@ class BlackBoard:
     
     def right_status(self):
         rospy.loginfo("Estoy en right status")
-        #pdb.set_trace()
+        
         self.laser_scan()
         rospy.sleep(2)
 
@@ -242,14 +242,23 @@ class BlackBoard:
         y3 = y[130:200]
         
         black_board.right_wall_param(y1)
-        agent_rotation_angle = quat_to_angle(black_board.agent_rotation)
-        print "odom_angle: ", math.degrees(normalize_angle(agent_rotation_angle))
+        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))
+        pdb.set_trace()
+        angle_rad_rot = math.radians(agent_rotation_angle)
+        if abs(agent_rotation_angle) < 45:
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(angle_rad_rot), da=True)
+        if agent_rotation_angle < 135 and agent_rotation_angle >= 45:
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(90 - angle_rad_rot), da=True)
+        if abs(agent_rotation_angle) >= 135:
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(135 - angle_rad_rot), da=True)
+        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))    
+        print "odom_angle: ", agent_rotation_angle
         print "wall_angle: ", black_board.right_wall_angle
         #update average_distance_to_right_wall
         black_board.average_distance_to_right_wall = sum(y1)/65.
         print "average distance to right wall: ", black_board.average_distance_to_right_wall
         print bcolors.OKGREEN + "distance to right wall(coefficients[1]): " +  str(black_board.distance_to_right_wall) + bcolors.ENDC
-#        raw_input("Press a key to continue...")
+        #raw_input("Press ENTER to continue...")
         if black_board.distance_to_right_wall < 4.5:
             rospy.loginfo(bcolors.OKGREEN + "Right1 sensing" + bcolors.ENDC)
             black_board.Right1 = True
@@ -325,6 +334,14 @@ class BlackBoard:
             black_board.Left3 = False
             
         return 1
+    
+    def sign(self, x):
+        if x < 0.0:
+            return -1
+        elif x == 0.0:
+            return 0
+        elif x > 0.0:
+            return 1
 
 
 # Initialize the blackboard
@@ -736,9 +753,16 @@ class Existence:
 
     def get_random_experiment(self, interaction):
         random_experiment = random.choice(self.EXPERIMENTS.values())
+        # we have decided to use the max valence interaction instead
         if interaction is None:
-            return self.EXPERIMENTS['e1']
-            #return 'e1'
+            valence_max = 0.0
+            for interact in self.primitive_interactions:
+                valence = self.primitive_interactions[interact][2]
+                if valence_max < valence:
+                    valence_max = valence
+                    experiment = self.primitive_interactions[interact][0]
+            best_experiment = self.EXPERIMENTS[experiment]
+            return best_experiment
         else:
             # trying to choose a random experiment but avoid choosing one that was part of the rejected interaction
             bad_experiment = interaction.get_experiment()
@@ -746,7 +770,7 @@ class Existence:
             while chosen_experiment == bad_experiment:
                 chosen_experiment = random.choice(self.EXPERIMENTS.values())
             return random_experiment
-            #return 'e1'
+
     def addget_result(self, label):
         if label not in self.RESULTS:
             self.RESULTS[label] = Result(label)
@@ -875,7 +899,7 @@ class RecursiveExistence(Existence):
 
     def enact_primitive_interaction(self, intended_interaction):
         """
-        Implements the cognitive coupling between the agent and the environment.
+        Implements the cognitive coupling between the agent and the environment
         Tries to enact primitive intended_interaction.
         """
         experiment = intended_interaction.get_experiment()
@@ -884,9 +908,22 @@ class RecursiveExistence(Existence):
         return self.addget_primitive_interaction(experiment, result)
 
     def select_experiment(self, anticipations):
-        anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
-        selected_anticipation = anticipations[0]
-        return selected_anticipation.get_experiment()
+        #pdb.set_trace()
+        if black_board.move_count > 1:
+            anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
+            selected_anticipation = anticipations[0]
+            return selected_anticipation.get_experiment()
+        else:
+            # if nothing was anticipated, choose at random
+            # we have decided to use the max valence interaction instead
+            valence_max = 0.0
+            for interaction in self.primitive_interactions:
+                valence = self.primitive_interactions[interaction][2]
+                if valence_max < valence:
+                    valence_max = valence
+                    experiment = self.primitive_interactions[interaction][0]
+            chosen_experiment = self.EXPERIMENTS[experiment]
+            return chosen_experiment
 
     def anticipate(self):
         anticipations = self.get_default_anticipations()
