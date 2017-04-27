@@ -39,7 +39,7 @@ floorplan
 # throw in a robot
 turtlebot
 (
-  pose [ 18.0 -3.9 0.000 180.000 ]
+  pose [ 18.0 -4.9 0.000 180.000 ]
   name "turtlebot"
   color "blue"
 )

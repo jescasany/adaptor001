@@ -1,7 +1,0 @@
-<launch>
-    <param name = "maximum_range" type="double" value="3.25"/>
-
-    <node pkg="comp4766_a3_mod" type="laser_filter.py" name="laser_filter" output="screen"/>
-    <node pkg="comp4766_a3_mod" type="extract_single_line.py" name="extract_single_line" output="screen"/>
-    <node pkg="comp4766_a3_mod" type="display_lines.py" name="display_lines"/>
-</launch>

@@ -61,7 +61,7 @@ class Decode:
         #pdb.set_trace()
         self.raw = self.raw.replace('e1r10','move forward fail')
         self.raw = self.raw.replace('e1r1','move forward wall')
-        self.raw = self.raw.replace('e1r4','move forward')
+        self.raw = self.raw.replace('e1r4','move forward no wall')
         self.raw = self.raw.replace('e2r2','turn left')
         self.raw = self.raw.replace('e3r3','turn right')
         self.raw = self.raw.replace('e4r4','front free')
@@ -111,18 +111,26 @@ class BlackBoard:
         x = range(len(y))
         pylab.figure(name)
         pylab.clf()
-        pylab.plot(x,y)
+        pylab.plot(x,y, color = 'black')
+        pylab.plot(x,y, 'bo')
         pylab.draw()
         pylab.show()
         #raw_input("Press a key to continue...")
         
     def regression(self, y):
+        # data provided as numpy arrays
         x = range(len(y))
         x = np.asarray(x)
         y = np.asarray(y)
+        # here, create lambda function for Line fit
+        # p is a tuple that contains the parameters of the fit
         fitfunc = lambda p, x: p[0] * x + p[1]
+        # errfunc is the diference between the fitfunc and the y "experimental" data
         errfunc = lambda p, x, y: fitfunc(p, x) - y
+        # guess contains the "first guess" of the parameters
         guess = (0, 0)
+        # leastsq finds the set of parameters in the tuple p that minimizes
+        # errfunc = yfit - yExperimental
         coefficients, success = sci.leastsq(errfunc, guess[:], args = (x, y), maxfev = 10000)
         return coefficients
         
@@ -133,7 +141,7 @@ class BlackBoard:
         black_board.right_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
         if coefficients[1] < 5.0:
-            black_board.distance_to_right_wall = coefficients[1]/2
+            black_board.distance_to_right_wall = coefficients[1]
         else:
             black_board.distance_to_right_wall = coefficients[1]
         
@@ -143,7 +151,7 @@ class BlackBoard:
         black_board.left_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
         if coefficients[1] < 5.0:
-            black_board.distance_to_left_wall = coefficients[1]/2
+            black_board.distance_to_left_wall = coefficients[1]
         else:
             black_board.distance_to_left_wall = coefficients[1]
             
@@ -153,14 +161,22 @@ class BlackBoard:
         # Subscribe the /base_scan topic to get the range readings  
         rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, self.scan_callback, queue_size = 10)
         rospy.sleep(0.1)
-        if min(black_board.kinect_scan[300:338]) < 1.2:
+        black_board.distance_front = min(black_board.kinect_scan[300:338])
+        if black_board.distance_front <= 1.7:
             black_board.driving_forward = False
         else:
+            if black_board.Right1:
+                black_board.adv_distance = black_board.distance_front - 1.7
+            elif black_board.Right2 or black_board.Right3:
+                black_board.adv_distance = 1.0
+            else:
+                black_board.adv_distance = 0.0
+                
             black_board.driving_forward = True
         #rospy.loginfo("laser_scan done")
         
     def scan_callback(self, msg):
-        black_board.kinect_scan = list(msg.ranges) # transform to list since ranges is a tuple
+        black_board.kinect_scan = list(msg.ranges) # transformed to list since ranges is a tuple
         
     def formule(self, L, tolerance):
         f = 0
@@ -168,7 +184,7 @@ class BlackBoard:
         f = self.round_to_zero(f, tolerance)
         return f
         
-    def moving_window_filtro(self, x, tolerance, n_neighbors=1):
+    def moving_window_filtro(self, x, tolerance=0.2, n_neighbors=1):
         n = len(x)
         width = n_neighbors*2 + 1
         x = [x[0]]*n_neighbors + x + [x[-1]]*n_neighbors
@@ -177,12 +193,10 @@ class BlackBoard:
         filtro = []
         singularity = []
         for i in range(n):
-            fi = self.formule(x[i:i+width], tolerance)
-            if fi > 0:
-                filtro.append(fi)
+            fi = abs(self.formule(x[i:i+width], tolerance))
+            filtro.append(fi)
+            if fi != 0.0:
                 singularity.append(i)
-            else:
-                filtro.append(0.0)
             
         return filtro, singularity
     
@@ -191,6 +205,30 @@ class BlackBoard:
             return 0
         else:
             return val
+        
+    def arrange(self):
+        # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
+        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))
+        # pdb.set_trace()
+        angle_rad_rot = math.radians(agent_rotation_angle)
+        if abs(agent_rotation_angle) < 45:
+            turn = -angle_rad_rot
+            print agent_rotation_angle, degrees(turn)
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
+        if abs(agent_rotation_angle) < 90 and abs(agent_rotation_angle) >= 45:
+            turn = self.sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
+            print agent_rotation_angle, degrees(turn)
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
+        if abs(agent_rotation_angle) < 135 and abs(agent_rotation_angle) >= 90:
+            turn = -self.sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
+            print agent_rotation_angle, degrees(turn)
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
+        if abs(agent_rotation_angle) >= 135:
+            turn = self.sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
+            print agent_rotation_angle, degrees(turn)
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
+        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))
+        return agent_rotation_angle
         
     def move_adv(self):
         rospy.loginfo("Estoy en move advance")
@@ -209,7 +247,10 @@ class BlackBoard:
             
             self.laser_scan()
             if black_board.driving_forward or black_board.adv_distance == 0.0:
-                (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, black_board.adv_angle, da=True)
+                if abs(black_board.adv_angle) < radians(2):    
+                    (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, 0.0, da=True)
+                else:
+                    (black_board.agent_position, black_board.agent_rotation) = advance(black_board.adv_distance, black_board.adv_angle, da=True)
                 black_board.adv_angle = 0.0
                 black_board.print_position()
     #            raw_input("Press a key to continue...")
@@ -232,40 +273,45 @@ class BlackBoard:
         rospy.loginfo("Estoy en right status")
         
         self.laser_scan()
-        rospy.sleep(2)
-
+        rospy.sleep(1)
+        if black_board.distance_front < 2.5:
+            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, math.pi/2, da=True)
+            self.laser_scan()
+            rospy.sleep(1)
         y = list()
         y = black_board.kinect_scan
-        #black_board.plotter(black_board.kinect_scan)
+        
+        #black_board.plotter(y[0:200], "Right")
+        
+        black_board.filtered_scan, singularities = self.moving_window_filtro(y[0:200], tolerance=0.1, n_neighbors=1)
+        print singularities
+#        if len(singularities) != 0:
+#            black_board.plotter(black_board.filtered_scan, "Right-filtered")
+        
         y1 = y[0:65]
         y2 = y[65:130]
         y3 = y[130:200]
         
         black_board.right_wall_param(y1)
-        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))
-        pdb.set_trace()
-        angle_rad_rot = math.radians(agent_rotation_angle)
-        if abs(agent_rotation_angle) < 45:
-            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(angle_rad_rot), da=True)
-        if agent_rotation_angle < 135 and agent_rotation_angle >= 45:
-            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(90 - angle_rad_rot), da=True)
-        if abs(agent_rotation_angle) >= 135:
-            (black_board.agent_position, black_board.agent_rotation) = advance(0.0, -self.sign(angle_rad_rot)*abs(135 - angle_rad_rot), da=True)
-        agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))    
+        
+        agent_rotation_angle = self.arrange() 
+        
         print "odom_angle: ", agent_rotation_angle
         print "wall_angle: ", black_board.right_wall_angle
-        #update average_distance_to_right_wall
+        # update average_distance_to_right_wall
         black_board.average_distance_to_right_wall = sum(y1)/65.
         print "average distance to right wall: ", black_board.average_distance_to_right_wall
         print bcolors.OKGREEN + "distance to right wall(coefficients[1]): " +  str(black_board.distance_to_right_wall) + bcolors.ENDC
+        print bcolors.OKGREEN + "distance to front obstacle: " +  str(black_board.distance_front) + bcolors.ENDC
         #raw_input("Press ENTER to continue...")
         if black_board.distance_to_right_wall < 4.5:
             rospy.loginfo(bcolors.OKGREEN + "Right1 sensing" + bcolors.ENDC)
             black_board.Right1 = True
-            black_board.adv_distance = 1.0            
+            black_board.adv_distance = black_board.distance_front - 1.7            
             #pdb.set_trace()
         else:
             rospy.loginfo(bcolors.OKGREEN + "Nothing on the right1" + bcolors.ENDC)
+            black_board.adv_distance = 0.0
             black_board.Right1 = False
             #black_board.Right_Corner = False
             
@@ -301,18 +347,22 @@ class BlackBoard:
         y3 = y[438:508]
         
         black_board.right_wall_param(y1)
-        agent_rotation_angle = quat_to_angle(black_board.agent_rotation)
+        agent_rotation_angle = self.arrange()  
         print "odom_angle: ",  math.degrees(normalize_angle(agent_rotation_angle))
         print "wall_angle: ", black_board.left_wall_angle
         #update average_distance_to_left_wall
         black_board.average_distance_to_left_wall = sum(y1)/65.
         print "average distance to left wall: ", black_board.average_distance_to_left_wall
         print "distance to left wall(coefficients[1]): ", black_board.distance_to_left_wall
+        print bcolors.OKGREEN + "distance to front obstacle: " +  str(black_board.distance_front) + bcolors.ENDC
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_left_wall < 4.5:
-            rospy.loginfo("Left sensing1")
+            rospy.loginfo(bcolors.OKGREEN + "Left1 sensing" + bcolors.ENDC)
             black_board.Left1 = True
-            black_board.adv_distance = 1.0
+            if black_board.Rigth1:
+                black_board.adv_distance = black_board.distance_front - 1.7
+            else:
+                black_board.adv_distance = 0.0
         else:
             rospy.loginfo(bcolors.OKGREEN + "Nothing on the left1" + bcolors.ENDC)
             black_board.Left1 = False
@@ -396,7 +446,7 @@ class EcaAgent02:
         black_board.ex = None
         # initialize primitive interactions
         primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
-                                  "move forward": ("e1", "r4", -20),\
+                                  "move forward no wall": ("e1", "r4", -20),\
                                   "move forward fail": ("e1", "r10", -50),\
                                   "turn left": ("e2", "r2", 15),\
                                   "turn right": ("e3", "r3", 25),\
@@ -502,13 +552,13 @@ class EcaAgent02:
     def is_visited(self):
         if black_board.move_count == 0:
             rospy.loginfo("Waypoint is not visited.")
-            return False
+            return True
         if (black_board.agent_position, black_board.agent_rotation) in black_board.waypoints[0:-1]:
             rospy.loginfo("Waypoint is visited.")
             return True
         else:
             rospy.loginfo("Waypoint is not visited.")
-            return False
+            return True
     
     def front_status(self):
         #pdb.set_trace()
@@ -964,7 +1014,7 @@ class RecursiveExistence(Existence):
                 context_interactions.append(self.context_interaction.get_post_interaction())
             if self.context_pair_interaction is not None:
                 context_interactions.append(self.context_pair_interaction)
-        print bcolors.OKGREEN + "Context: " + str(context_interactions) + bcolors.ENDC
+        print bcolors.OKGREEN + "Context: " + repr(context_interactions) + bcolors.ENDC
         activated_interactions = []
         for key in self.INTERACTIONS:
             activated_interaction = self.INTERACTIONS[key]
@@ -1256,8 +1306,9 @@ class Interaction:
 
     def get_valence(self):
         #pdb.set_trace
+        interaction = self
         if black_board.process_boredom:
-            return boredom_handler.process_boredom(black_board.ex.INTERACTIONS, self, self.valence)
+            return boredom_handler.process_boredom(black_board.ex.INTERACTIONS, interaction, self.valence)
         else:
             if self.is_primitive():
                 return self.valence
@@ -1336,7 +1387,10 @@ class Environment:
         black_board.laser_scan()
         black_board.right_status()
         if experiment.get_label() == 'e1':
-            black_board.adv_distance = 1.0
+            if black_board.Right1:
+                black_board.adv_distance = black_board.distance_front - 1.7
+            else:
+                black_board.adv_distance = 0.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
             if not black_board.move_fail and black_board.Right1:
@@ -1344,7 +1398,7 @@ class Environment:
             elif not black_board.move_fail:
                 result = 'r4'  # moving forward sensing no wall 
             else:
-                result = 'r10' # move failed: if move bump 
+                result = 'r10' # move failed: if robot bumps 
         elif experiment.get_label() == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
@@ -1399,7 +1453,10 @@ class ConstructiveEnvironment:
         black_board.laser_scan()
         black_board.right_status()
         if experiment == 'e1':
-            black_board.adv_distance = 1.0
+            if black_board.Right1:
+                black_board.adv_distance = black_board.distance_front - 1.7
+            else:
+                black_board.adv_distance = 0.0
             black_board.adv_angle = 0.0
             black_board.move_adv()
             if not black_board.move_fail and black_board.Right1:
@@ -1407,7 +1464,7 @@ class ConstructiveEnvironment:
             elif not black_board.move_fail:
                 result = 'r4'  # moving forward sensing no wall    
             else:
-                result = 'r10' # move failed: if move bump 
+                result = 'r10' # move failed: if robot bumps
         elif experiment == 'e2':
             black_board.adv_distance = 0.0
             black_board.adv_angle = math.pi/2
@@ -1573,11 +1630,13 @@ class WeightRepetitiveBoredomHandler(BoredomHandler):
         self.repetitiveBoredomHandler = RepetitiveBoredomHandler()
 
     def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
-        return (
+        modified_valence = (
             self.weightBoredomHandler.process_boredom(INTERACTIONS, interaction, unmodified_valence)
             +
             self.repetitiveBoredomHandler.process_boredom(INTERACTIONS, interaction, unmodified_valence)
             )/2
+        print bcolors.OKGREEN + "Interaction modified: " + repr(interaction) + "Modified valence: " + str(modified_valence) + bcolors.ENDC
+        return modified_valence
 
 # the kind of boredom handler is going to be used
 boredom_handler = RepetitiveBoredomHandler()

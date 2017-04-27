@@ -2,8 +2,8 @@ define kinect ranger
 (
   sensor
   (
-    range_max 6.5
-    fov 58.0
+    range_max 5.5
+    fov 180.0  # Actually it's fov=58.0, but we need sense both sides too 
     samples 640
   )
   # generic model properties

@@ -12,7 +12,7 @@ import rospy
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
-from math import radians, degrees, sqrt, pow
+from math import radians, sqrt, pow
 
 def advance(distance, angle, da = True):
     """ Publisher to control the robot's speed """
@@ -117,7 +117,7 @@ def advance(distance, angle, da = True):
 #            print "ta", degrees(turn_angle)
 #            print "\n"
             #raw_input()
-            if abs(turn_angle + angular_tolerance) > abs(goal_angle*4/5) and not done:
+            if (abs(turn_angle + angular_tolerance) > abs(goal_angle*4/5) or abs(goal_angle) < radians(2)) and not done:
                 #pdb.set_trace()
                 # Stop the robot before the next leg
                 move_cmd = Twist()
