@@ -176,7 +176,7 @@ class BlackBoard:
         #rospy.loginfo("laser_scan done")
         
     def scan_callback(self, msg):
-        black_board.kinect_scan = list(msg.ranges) # transformed to list since ranges is a tuple
+        black_board.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
         
     def formule(self, L, tolerance):
         f = 0
