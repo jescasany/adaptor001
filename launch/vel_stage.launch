@@ -7,7 +7,17 @@
   <arg name="stacks"     default="$(optenv TURTLEBOT_STACKS hexagons)"/>  <!-- circles, hexagons -->
   <arg name="3d_sensor"  default="$(optenv TURTLEBOT_3D_SENSOR kinect)"/>  <!-- kinect, asus_xtion_pro -->
   
-  <param name="/use_sim_time" value="true" />
+    <param name="/use_sim_time" value="true" />
+    <param name="follow_offset" value="0.4"/>
+    <param name="follow_advance" value="1.0"/>
+    
+    <param name = "orthog_distance_threshold" type="double" value="0.05"/>
+    <param name = "min_points_per_line" type="int" value="4"/>
+    <param name = "maximum_range" type="double" value="3.25"/>
+    
+    <param name="lines_topic" value="/extracted_lines"/>
+    <param name="vis_lines_topic" value="/visualization_lines"/>
+    <param name="vis_scanpoints_topic" value="/visualization_scanpoints"/>
 
   <!-- Load the URDF/Xacro model of our robot -->
   <arg name="urdf_file" default="$(find xacro)/xacro.py '$(find rbx1_description)/urdf/turtlebot.urdf.xacro'" />

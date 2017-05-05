@@ -21,7 +21,7 @@ import numpy as np
 import scipy.optimize as sci
 import math
 import pylab
-from geometry_msgs.msg import Twist, Point, Quaternion
+from geometry_msgs.msg import Twist, Point, Quaternion, Point32
 from rbx2_msgs.srv import *
 from pi_trees_ros.pi_trees_ros import *
 from rbx2_tasks.task_setup import *
@@ -31,12 +31,17 @@ from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 
 import argparse
 import abc
-from json import loads, dumps
+#from json import loads, dumps
 from collections import OrderedDict, Counter
 from experiment import *
 from result import Result
 from anticipation import *
 import random
+
+import display_lines
+from adaptor001.msg import ExtractedLine
+from adaptor001.msg import ExtractedLines
+from visualization_msgs.msg import Marker
 
 # for fancy terminal displays
 class bcolors:
@@ -51,7 +56,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
     REVERSE = '\033[7m'
     
-# to translate from 'e#r#' to clear 'meaning'
+# to translate from 'e#r#' format to clear 'meaning'
 class Decode:
     def __init__(self, raw):
         #pdb.set_trace()
@@ -93,6 +98,32 @@ class BlackBoard:
         # Create a dictionary to hold navigation waypoints
         self.waypoints = list()
         
+        self.follow_offset = rospy.get_param('follow_offset')
+        self.follow_advance = rospy.get_param('follow_advance')
+        
+        self.lines_topic = rospy.get_param('lines_topic')
+        self.vis_lines_topic = rospy.get_param('vis_lines_topic')
+        self.vis_scanpoints_topic = rospy.get_param('vis_scanpoints_topic')
+        # Read parameters managed by the ROS parameter server
+        self.orthog_distance_threshold = rospy.get_param('orthog_distance_threshold')
+        self.min_points_per_line = rospy.get_param('min_points_per_line')
+        self.maximum_range = rospy.get_param('maximum_range')
+        
+        self.scan = list()
+        
+        self.cmd_vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=5)
+        
+        # Create our publisher for the lines extracted within 'base_scan' callback
+        self.extracted_publisher = rospy.Publisher(self.lines_topic, ExtractedLines, queue_size=10)
+        
+        # We will publish to vis_lines_topic which will show the lines (as
+        # line segments) in RViz.  We will also publish the first and last scan
+        # points to topic vis_scanpoints_topic in the same colour so that it
+        # is clear from what range of scan points the lines are generated.
+        self.lines_publisher = rospy.Publisher(self.vis_lines_topic, Marker, queue_size=10)
+        self.scanpoints_publisher = rospy.Publisher(self.vis_scanpoints_topic, Marker, queue_size=10)
+        self.selected_lines_publisher = rospy.Publisher('/extracted_lines_wf', \
+                               ExtractedLines, queue_size=10)
         # Initialize the patrol counter
         self.move_count = 0
         # initialize one simulation step (that might consist of several primitive steps)
@@ -134,26 +165,187 @@ class BlackBoard:
         coefficients, success = sci.leastsq(errfunc, guess[:], args = (x, y), maxfev = 10000)
         return coefficients
         
-    def right_wall_param(self, y):
+    def right_wall_param(self, y, start_index, end_index):
         #pdb.set_trace()
         coefficients = self.regression(y)
+        
+        first_scan_point = Point32()
+        last_scan_point = Point32()
+        dist = y[0]
+        angle = black_board.angle_min + start_index * black_board.angle_increment
+        if dist <= black_board.maximum_range:
+            first_scan_point.x = dist * math.cos(angle)
+            first_scan_point.y = dist * math.sin(angle)
+        dist = y[end_index]
+        angle = black_board.angle_min + end_index * black_board.angle_increment
+        if dist <= black_board.maximum_range:
+            last_scan_point.x = dist * math.cos(angle)
+            last_scan_point.y = dist * math.sin(angle)
         # approximate wall_angle (degrees)
         black_board.right_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
-        if coefficients[1] < 5.0:
-            black_board.distance_to_right_wall = coefficients[1]
-        else:
-            black_board.distance_to_right_wall = coefficients[1]
+        black_board.distance_to_right_wall = coefficients[1]
+        return coefficients, first_scan_point, last_scan_point
         
-    def left_wall_param(self, y):
+    def left_wall_param(self, y, start_index, end_index):
         coefficients = self.regression(y)
+        
+        first_scan_point = Point32()
+        last_scan_point = Point32()
+        dist = y[-1]
+        angle_min = black_board.angle_min + 574 * black_board.angle_increment
+        angle = angle_min + start_index * black_board.angle_increment
+        if dist <= black_board.maximum_range:
+            first_scan_point.x = dist * math.cos(angle)
+            first_scan_point.y = dist * math.sin(angle)
+        dist = y[end_index]
+        angle = angle_min + end_index * black_board.angle_increment
+        if dist <= black_board.maximum_range:
+            last_scan_point.x = dist * math.cos(angle)
+            last_scan_point.y = dist * math.sin(angle)
         # approximate wall_angle (degrees)
         black_board.left_wall_angle = normalize_angle(math.atan(coefficients[0]))*360./(2*math.pi)
         # approximate dist to wall (meters)
-        if coefficients[1] < 5.0:
-            black_board.distance_to_left_wall = coefficients[1]
-        else:
-            black_board.distance_to_left_wall = coefficients[1]
+        black_board.distance_to_left_wall = coefficients[1]
+        
+    def display_callback(self, lines_msg):
+        """
+        Callback for extracted lines, displayed by publishing to
+        vis_lines_topic and vis_scanpoints_topic.
+        """
+        display_lines.create_lines_marker(lines_msg, black_board)
+        display_lines.create_scanpoints_marker(lines_msg, black_board)
+        """
+        The first thing to do is account for the fact that the lines are
+        extracted in the 'odom' reference frame.  The laser scanner is installed
+        upside-down.  We could use tf to account for the difference, but all that
+        we need to adjust is to minus pi/2 all of the m angles for each extracted
+        line.  The translation of the laser from the centre of the robot
+        shouldn't have an impact on the algorithm here other than changing the
+        interpretation of the 'follow-offset' parameter.
+        """
+        #pdb.set_trace()
+        for l in lines_msg.lines:
+            l.m = l.m - math.pi/2
+        """
+        Set 'line' to be the closest line to the robot.  If the closest line is
+        not ahead of the robot or on it's right side then the 'line' variable will
+        be reset to 'None' indicating there is no suitable line to follow.  We
+        choose a range of m values to represent such lines.
+        """
+        line = None
+        smallestR = float('inf')
+        for l in lines_msg.lines:
+            if l.c < smallestR:
+                smallestR = l.c
+                line = l
+        pdb.set_trace()
+        """
+        If this closest line is in the right angular range, we will use it below
+        to generate a goal position.  Otherwise, we will ignore it and keep with
+        any previously set velocity.
+        """
+        if line is not None:
+            if abs(line.m) > math.pi/2 :
+                line = None
+        """
+        Place the closest line into a new ExtractedLines message and publish it on
+        topic 'selected_lines'.  This will allow us to see the line selected
+        above in rviz.  Note that we create a new line and change the m back
+        to its original value.  This is because rviz will display the line w.r.t.
+        the 'odom' frame.
+        """
+        sel_lines = ExtractedLines()
+        sel_lines.header.frame_id = lines_msg.header.frame_id
+        if line != None:
+            sel_line = ExtractedLine()
+            sel_line.c = line.c
+            sel_line.m = line.m + math.pi/2
+            sel_lines.lines.append(sel_line)
+        black_board.selected_lines_publisher.publish(sel_lines)
+        """
+        The position of the goal in the robot reference frame is specified by
+        the values goalx and goaly, the x and y coordinates of the goal in the
+        robot reference frame.  These are obtained by summing the following two
+        vectors which the instructor will illustrate on the board.  Note that fo
+        = follow-offset and fa = follow-advance):
+        
+        Vector from the origin to the closest point on the line, with a length
+        of c (orthogonal distance of the line) - fo
+               [(c-fo) cos(m), (c-fo) sin(m)]
+        
+        Vector along the line, oriented towards counter-clockwise with length fa
+               [fa cos(m+pi/2), fa sin(m+pi/2)]
+        """
+        goalx = 0
+        goaly = 0
+        if line != None:
+             fo = black_board.follow_offset
+             fa = black_board.follow_advance
+             goalx = (line.c - fo) * math.cos(line.m) + fa * math.cos(line.m + math.pi/2)
+             goaly = (line.c - fo) * math.sin(line.m) + fa * math.sin(line.m + math.pi/2)
+             black_board.adv_distance = math.sqrt(math.pow(goalx,2)+math.pow(goaly,2))
+             black_board.adv_angle = math.atan(goaly/goalx)
+        # Publish the twist message produced by the controller.
+        if line != None:
+            rospy.loginfo("Stopping the agent...")
+            black_board.cmd_vel_publisher.publish(Twist())
+            rospy.sleep(1)
+            
+        
+    def extract_lines(self, y, status = 'R'):
+        """
+        Extracts lines from the given LaserScan and publishes to /extracted_lines.
+        Publish these lines as an ExtractedLines object on the /extracted_lines
+        topic.
+        """
+        #pdb.set_trace()
+        # Create an ExtractedLines object and initialize some fields in the header.
+        line = ExtractedLine()
+        lines = ExtractedLines()
+        #lines.header.frame_id = '/odom'
+        lines.header.frame_id = '/odom'
+        lines.header.stamp = rospy.Time.now()
+        # Create our big list of index pairs.  Each pair gives the start and end
+        # index which specifies a contiguous set of (scanned) data points in 'y'.
+        n = len(y)
+        start_index = 0
+        end_index = n-1
+        done_si = False
+        for i in range(n):
+            if y[i] < black_board.maximum_range and y[i] != 0.0:
+                if not done_si:
+                    start_index = i
+                    done_si = True
+                end_index = i
+        if status == 'R':
+            coefficients, first_scan_point, last_scan_point = self.right_wall_param(y, start_index, end_index)
+        elif status == 'L':
+            coefficients, first_scan_point, last_scan_point = self.left_wall_param(y, start_index, end_index)
+        line.m = coefficients[0]
+        line.c = coefficients[1]
+        line.firstScanPoint = first_scan_point
+        line.lastScanPoint = last_scan_point
+        if line.c >= 4.99:
+            line = None
+    
+        if line is not None:
+            lines.lines.append(line)
+            black_board.lines = lines.lines
+        print "LINES: "
+        print black_board.lines
+        
+        raw_input('Enter to continue')
+        
+        # Subscribe to 'lines_topic'
+        rospy.Publisher('/extracted_lines', ExtractedLines, queue_size=10).publish(lines)
+        #rospy.loginfo("Waiting for lines_topic...")
+        #rospy.wait_for_message('/extracted_lines', ExtractedLines)
+        rospy.Subscriber('/extracted_lines', ExtractedLines, self.display_callback, queue_size=10)
+            
+        rospy.sleep(1)
+        black_board.lines.append(line)
+        return line
             
     def laser_scan(self):
         #rospy.loginfo("Waiting for /base_scan topic...")
@@ -177,6 +369,8 @@ class BlackBoard:
         
     def scan_callback(self, msg):
         black_board.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
+        black_board.angle_min = msg.angle_min
+        black_board.angle_increment = msg.angle_increment
         
     def formule(self, L, tolerance):
         f = 0
@@ -213,19 +407,19 @@ class BlackBoard:
         angle_rad_rot = math.radians(agent_rotation_angle)
         if abs(agent_rotation_angle) < 45:
             turn = -angle_rad_rot
-            print agent_rotation_angle, degrees(turn)
+            print agent_rotation_angle, math.degrees(turn)
             (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
         if abs(agent_rotation_angle) < 90 and abs(agent_rotation_angle) >= 45:
             turn = self.sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
-            print agent_rotation_angle, degrees(turn)
+            print agent_rotation_angle, math.degrees(turn)
             (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
         if abs(agent_rotation_angle) < 135 and abs(agent_rotation_angle) >= 90:
             turn = -self.sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
-            print agent_rotation_angle, degrees(turn)
+            print agent_rotation_angle, math.degrees(turn)
             (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
         if abs(agent_rotation_angle) >= 135:
             turn = self.sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
-            print agent_rotation_angle, degrees(turn)
+            print agent_rotation_angle, math.degrees(turn)
             (black_board.agent_position, black_board.agent_rotation) = advance(0.0, turn, da=True)
         agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board.agent_rotation)))
         return agent_rotation_angle
@@ -292,15 +486,12 @@ class BlackBoard:
         y2 = y[65:130]
         y3 = y[130:200]
         
-        black_board.right_wall_param(y1)
+        self.extract_lines(y1, status = 'R')
         
         agent_rotation_angle = self.arrange() 
         
         print "odom_angle: ", agent_rotation_angle
         print "wall_angle: ", black_board.right_wall_angle
-        # update average_distance_to_right_wall
-        black_board.average_distance_to_right_wall = sum(y1)/65.
-        print "average distance to right wall: ", black_board.average_distance_to_right_wall
         print bcolors.OKGREEN + "distance to right wall(coefficients[1]): " +  str(black_board.distance_to_right_wall) + bcolors.ENDC
         print bcolors.OKGREEN + "distance to front obstacle: " +  str(black_board.distance_front) + bcolors.ENDC
         #raw_input("Press ENTER to continue...")
@@ -346,20 +537,18 @@ class BlackBoard:
         y2 = y[508:574]
         y3 = y[438:508]
         
-        black_board.right_wall_param(y1)
+        self.extract_lines(y1, status = 'L')
+        
         agent_rotation_angle = self.arrange()  
         print "odom_angle: ",  math.degrees(normalize_angle(agent_rotation_angle))
         print "wall_angle: ", black_board.left_wall_angle
-        #update average_distance_to_left_wall
-        black_board.average_distance_to_left_wall = sum(y1)/65.
-        print "average distance to left wall: ", black_board.average_distance_to_left_wall
         print "distance to left wall(coefficients[1]): ", black_board.distance_to_left_wall
         print bcolors.OKGREEN + "distance to front obstacle: " +  str(black_board.distance_front) + bcolors.ENDC
 #        raw_input("Press a key to continue...")
         if black_board.distance_to_left_wall < 4.5:
             rospy.loginfo(bcolors.OKGREEN + "Left1 sensing" + bcolors.ENDC)
             black_board.Left1 = True
-            if black_board.Rigth1:
+            if black_board.Left1:
                 black_board.adv_distance = black_board.distance_front - 1.7
             else:
                 black_board.adv_distance = 0.0
@@ -404,30 +593,24 @@ black_board.adv_distance = 1.0      # meters
 black_board.adv_angle = 0.0     # radians
 
 black_board.driving_forward = True      # is True if there is no obstacle ahead 
-black_board.move_fail = False
+black_board.move_fail = False       #  whether move_adv fails or not
 
 black_board.distance_to_right_wall = 1.5
 black_board.last_distance = 1.5
 black_board.distance_to_left_wall = 5.0
 black_board.left_wall_angle = 0.0
 black_board.distance_to_front = 7.0
-black_board.Front = False
-black_board.Front_All = False
 black_board.Left1 = False
 black_board.Left2 = False
 black_board.Left3 = False
 black_board.Right1 = False
 black_board.Right2 = False
 black_board.Right3 = False
-black_board.Right_Corner = False
-black_board.Right_Length = 200
-black_board.Left_Length = 200
 (black_board.agent_position, black_board.agent_rotation) = black_board.agent_pose 
 black_board.odom_angle = 0.0
-
-black_board.chs = 1     # used to change the sign(+/-) of the PI/2 turn
 black_board.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms
 black_board.process_boredom = False
+black_board.lines = list()
 
 
 class EcaAgent02:
@@ -506,48 +689,7 @@ class EcaAgent02:
             if black_board.sim_step >= 3:
                 black_board.process_boredom = True
             black_board.sim_step += 1
-            rate.sleep()
-
-    def front_free(self):
-        #pdb.set_trace()
-        rospy.loginfo("Estoy en front free")
-#        self.laser_scan()   # updates black_board.kinect_scan (ranges)
-#        rospy.sleep(2)
-        black_board.distance_to_obstacle = 5.0
-        tolerance = 0.2
-        y = list()
-        y = black_board.kinect_scan
-        
-        black_board.filtered_scan = self.moving_window_filtro(y[290:350], tolerance, n_neighbors=1)[0]
-
-        #black_board.plotter(black_board.filtered_scan, "Front")
-        
-        # returns the readings having the discontinuity
-        front_singularity = self.moving_window_filtro(y[290:350], tolerance, n_neighbors=1)[1]
-        black_board.distance_to_obstacle = min(y[290:350])
-        #update average_distance_to_front
-        average_distance_to_front = sum(y[290:350])/60.
-        print "average distance to front: ", average_distance_to_front
-        #black_board.distance_to_obstacle = average_distance_to_front
-        print bcolors.OKGREEN + "distance to obstacle: " +  \
-            str(black_board.distance_to_obstacle) + bcolors.ENDC
-#        raw_input("Press a key to continue...")
-        if black_board.distance_to_obstacle > black_board.adv_distance:
-            print bcolors.OKGREEN + "FRONT FREE" + bcolors.ENDC
-            black_board.adv_distance = 1.0
-            if black_board.Right_Corner == False:
-                black_board.adv_angle = 0.0
-            black_board.driving_forward = True
-            black_board.Front = True
-            return 1
-        else:
-            print bcolors.OKRED + "OBSTACLE IN FRONT -> (+/-)PI/2" + bcolors.ENDC
-            black_board.adv_distance = 0.0
-            black_board.driving_forward = False
-            
-            black_board.chs *=-1
-            black_board.Front = False
-            return 0     
+            rate.sleep()   
     
     def is_visited(self):
         if black_board.move_count == 0:
@@ -559,68 +701,12 @@ class EcaAgent02:
         else:
             rospy.loginfo("Waypoint is not visited.")
             return True
-    
-    def front_status(self):
-        #pdb.set_trace()
-        rospy.loginfo("Estoy en front status")
-        self.laser_scan()
-        rospy.sleep(2)
-        tester = 5.0
-        tolerance = 0.1
-        y = list()
-        y = black_board.kinect_scan
-
-        black_board.filtered_scan = self.moving_window_filtro(y[200:438], tolerance, n_neighbors=1)[0]
         
-        #black_board.plotter(black_board.filtered_scan, "Front")        
-        
-        # returns the reading having the discontinuity
-        front_singularity = self.moving_window_filtro(y[200:438], tolerance, n_neighbors=1)[1]
-        tester = min(y[200:-1])
-        if len(front_singularity) != 0:
-            front_singularity = [x+200 for x in front_singularity]
-            print "front singularities: ", front_singularity
-            singular_readings = []
-            for i in front_singularity:
-                singular_readings.append(y[i])
-            print "front singular readings: ", singular_readings
-            tester = min(y[front_singularity[-1]:-1])
-            if tester > black_board.adv_distance:
-                print bcolors.OKGREEN + "Front is free." + bcolors.ENDC
-                black_board.Front_All = True
-                #black_board.adv_angle = 0.0
-            else:
-                print bcolors.OKGREEN + "Front is blocked -> PI/2" + bcolors.ENDC
-                black_board.Front_All = False
-                #black_board.adv_angle = math.pi/2
-        else:
-            #update average_distance_to_front
-            average_distance_to_front = sum(y[200:438])/238.
-            print "average distance to front: ", average_distance_to_front
-            tester = average_distance_to_front
-            if tester > black_board.adv_distance:
-                print bcolors.OKGREEN + "Front is free." + bcolors.ENDC
-                black_board.Front_All = True
-                #black_board.adv_angle = 0.0
-            else:
-                print bcolors.OKGREEN + "Front is blocked -> PI/2" + bcolors.ENDC
-                black_board.Front_All = False
-                #black_board.adv_angle = math.pi/2
-        return 2
-             
-    def clamp(self, val, minimum, maximum):
-        if val < minimum:
-            return minimum
-        elif val > maximum:
-            return maximum
-        else:
-            return val
-    
     def shutdown(self):
         rospy.loginfo("Stopping the agent...")
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
-        
+    
 
 class Existence:
     """
@@ -1638,7 +1724,7 @@ class WeightRepetitiveBoredomHandler(BoredomHandler):
         print bcolors.OKGREEN + "Interaction modified: " + repr(interaction) + "Modified valence: " + str(modified_valence) + bcolors.ENDC
         return modified_valence
 
-# the kind of boredom handler is going to be used
+# the kind of boredom handler that is going to be used
 boredom_handler = RepetitiveBoredomHandler()
     
 if __name__ == '__main__':
