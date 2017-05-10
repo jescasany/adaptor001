@@ -17,7 +17,8 @@ from geometry_msgs.msg import Point
 from std_msgs.msg import ColorRGBA
 from adaptor001.msg import ExtractedLine
 from adaptor001.msg import ExtractedLines
-from eca_agent02 import BlackBoard
+
+from black_board_class import BlackBoard, black_board_object
 
 def create_lines_marker(lines, black_board):
     marker = Marker()
@@ -57,7 +58,7 @@ def create_lines_marker(lines, black_board):
             marker.colors.append(color)
             marker.colors.append(color)
 
-    black_board.lines_publisher.publish(marker)
+    black_board_object.lines_publisher.publish(marker)
 
 def create_scanpoints_marker(lines, black_board):
     marker = Marker()
@@ -99,7 +100,7 @@ def create_scanpoints_marker(lines, black_board):
             marker.colors.append(color)
             marker.colors.append(color)
 
-    black_board.scanpoints_publisher.publish(marker)
+    black_board_object.scanpoints_publisher.publish(marker)
 
 def generate_endpoints(lines):
     """

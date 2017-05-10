@@ -1,5 +1,8 @@
 __author__ = 'katja'
 
+import black_board
+
+from black_board_class import black_board_object
 
 class Anticipation:
     """Anticipation is created from each proposed primitive interaction."""

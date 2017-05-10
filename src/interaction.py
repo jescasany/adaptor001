@@ -1,4 +1,19 @@
-__author__ = 'katja'
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 10 11:06:28 2017
+
+@author: juan
+"""
+
+import pdb
+
+from black_board_class import black_board_object
+
+import black_board 
+
+from boredom import *
+
 
 
 class Interaction:
@@ -35,12 +50,18 @@ class Interaction:
         self.result = result
 
     def get_valence(self):
-        if self.is_primitive():
-            return self.valence
+        pdb.set_trace
+        interaction = self
+        if black_board_object.boredom:
+            return boredom_handler.process_boredom(black_board.ex.INTERACTIONS, interaction, self.valence)
         else:
-            pre = self.get_pre_interaction()
-            post = self.get_post_interaction()
-            return pre.get_valence() + post.get_valence()
+            if self.is_primitive():
+                return self.valence
+            else:
+                pre = self.get_pre_interaction()
+                post = self.get_post_interaction()
+                self.valence = pre.get_valence() + post.get_valence()
+                return self.valence
 
     def set_valence(self, valence):
         self.valence = valence
@@ -78,6 +99,17 @@ class Interaction:
 
     def get_alternative_interactions(self):
         return self.alternative_interactions
+    
+    def unwrap(self):
+        if self.is_primitive():
+            return[self]
+        else:
+            """
+            Unwrap the composite interaction.
+            :return: A list of primitive interactions.
+            """
+            return self.get_pre_interaction().unwrap() + self.get_post_interaction().unwrap()
 
     def __repr__(self):
         return "{0}, valence {1}, weight {2}".format(self.get_label(), self.get_valence(), self.get_weight())
+       

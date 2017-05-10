@@ -1,5 +1,7 @@
 __author__ = 'katja'
 
+import black_board
+from black_board_class import black_board_object
 
 class Experiment:
     """ A primitive experiment that can be chosen by the agent """
