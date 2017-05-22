@@ -1,5 +1,4 @@
 #!/usr/bin/env python  
-
 """
 ROS Node which displays lines extracted from laser range scans.  The node
 subscribes to 'lines_topic' and publishes the data needed to display these
@@ -7,8 +6,8 @@ lines to 'vis_lines_topic' and correspondingly coloured first and last scan poin
 configured appropriately to display the messages posted to these topics.
 """
 
-#import roslib
-#roslib.load_manifest('comp4766_a3_mod')
+import pdb
+
 import rospy
 from math import cos, sin, pi
 
@@ -20,12 +19,12 @@ from adaptor001.msg import ExtractedLines
 
 from black_board_class import BlackBoard, black_board_object
 
-def create_lines_marker(lines, black_board):
+def create_lines_marker(lines):
     marker = Marker()
-
+    #pdb.set_trace()
     # Get the pairs of points that comprise the endpoints for all lines
     marker.points = generate_endpoints(lines)
-    print 'Puntos: '
+    print 'Marker points: '
     print marker.points
 
     # Initialize basic fields of the marker
@@ -44,7 +43,7 @@ def create_lines_marker(lines, black_board):
     n = len(lines.lines)
     if n == 1:
         # There is only one line.  Just set the color field.
-        marker.color.r = 1.0
+        marker.color.g = 1.0
         marker.color.a = 1.0
     if n > 1:
         # Set per-vertex colours
@@ -59,10 +58,11 @@ def create_lines_marker(lines, black_board):
             marker.colors.append(color)
 
     black_board_object.lines_publisher.publish(marker)
+    rospy.sleep(1)
 
-def create_scanpoints_marker(lines, black_board):
+def create_scanpoints_marker(lines):
     marker = Marker()
-
+    #pdb.set_trace()
     # Initialize basic fields of the marker
     marker.header.frame_id = lines.header.frame_id
     marker.header.stamp = rospy.Time()
@@ -86,7 +86,7 @@ def create_scanpoints_marker(lines, black_board):
 
     if n == 1:
         # There is only one line.  Just set the color field.
-        marker.color.r = 1.0
+        marker.color.g = 1.0
         marker.color.a = 1.0
     if n > 1:
         # Set per-vertex colours
@@ -101,6 +101,7 @@ def create_scanpoints_marker(lines, black_board):
             marker.colors.append(color)
 
     black_board_object.scanpoints_publisher.publish(marker)
+    rospy.sleep(1)
 
 def generate_endpoints(lines):
     """
@@ -119,8 +120,8 @@ def generate_endpoints(lines):
 
     n = len(lines.lines)
     for i in range(n):
-        r = lines.lines[i].c
-        alpha = lines.lines[i].m - pi/2
+        r = lines.lines[i].r
+        alpha = lines.lines[i].alpha - pi/2
 
         # Each point is a vector sum from the origin to the point on the line
         # closest to the origin + a vector along the line in either direction.

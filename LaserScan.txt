@@ -1,0 +1,15 @@
+header: 
+  seq: 153
+  stamp: 
+    secs: 15
+    nsecs: 400000000
+  frame_id: base_laser_link
+angle_min: -1.57079637051
+angle_max: 1.57079637051
+angle_increment: 0.00491642020643
+time_increment: 0.0
+scan_time: 0.0
+range_min: 0.0
+range_max: 5.0
+ranges: [1.75, 1.7500211000442505, 1.750084638595581, 1.7501903772354126, 1.7503
+intensities: [      ]

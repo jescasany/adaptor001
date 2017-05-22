@@ -1,7 +1,7 @@
-# The m and c coefficients define the extracted line: y = tan(m)*x + c.  
-#
-float32 m
-float32 c
+# The r and alpha parameters define the extracted line.  The message publisher
+# should ensure that r is positive and that alpha lies in the range (-pi, pi].
+float32 r
+float32 alpha
 #
 # The following points are used for display / debugging purposes only.
 # These points come from the position of the first and last laser scan points

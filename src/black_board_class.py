@@ -17,6 +17,10 @@ from visualization_msgs.msg import Marker
 """ A class to track black_board.variables """
 class BlackBoard:
     def __init__(self):
+        # Initialize the patrol counter
+        self.move_count = 0
+        # initialize one simulation step (that might consist of several primitive steps)
+        self.sim_step = 1
         # Initialize a number of variables for the blackboard
         self.kinect_scan = list()
         self.filtered_scan = list()
@@ -30,6 +34,7 @@ class BlackBoard:
         self.distance_to_right_wall = 1.5
         self.last_distance = 1.5
         self.distance_to_left_wall = 5.0
+        self.right_wall_angle = 0.0
         self.left_wall_angle = 0.0
         self.distance_to_front = 7.0
         self.Left1 = False
@@ -48,7 +53,8 @@ class BlackBoard:
         self.odom_angle = 0.0
         self.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms
         self.boredom = False
-        self.lines = list()
+        self.line = ExtractedLine()
+        self.lines = ExtractedLines()
         
         self.follow_offset = rospy.get_param('follow_offset')
         self.follow_advance = rospy.get_param('follow_advance')
@@ -65,7 +71,7 @@ class BlackBoard:
         
         self.cmd_vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         # Create our publisher for the lines extracted within 'base_scan' callback
-        self.extracted_publisher = rospy.Publisher(self.lines_topic, ExtractedLines, queue_size=10)
+        self.extracted_publisher = rospy.Publisher('/extracted_lines', ExtractedLines, queue_size=10)
         # We will publish to vis_lines_topic which will show the lines (as
         # line segments) in RViz.  We will also publish the first and last scan
         # points to topic vis_scanpoints_topic in the same colour so that it
@@ -74,10 +80,7 @@ class BlackBoard:
         self.scanpoints_publisher = rospy.Publisher(self.vis_scanpoints_topic, Marker, queue_size=10)
         self.selected_lines_publisher = rospy.Publisher('/extracted_lines_wf', \
                                ExtractedLines, queue_size=10)
-        # Initialize the patrol counter
-        self.move_count = 0
-        # initialize one simulation step (that might consist of several primitive steps)
-        self.sim_step = 1
+
         
 # Initialize the blackboard
 black_board_object = BlackBoard()

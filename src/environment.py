@@ -5,6 +5,8 @@ Created on Wed May 10 12:37:56 2017
 
 @author: juan
 """
+import pdb
+import math
 from black_board_class import BlackBoard, black_board_object
 import black_board
 
@@ -39,6 +41,7 @@ class Environment:
             else:
                 result = 'r10' # move failed: if robot bumps 
         elif experiment.get_label() == 'e2':
+            #pdb.set_trace()
             black_board_object.adv_distance = 0.0
             black_board_object.adv_angle = math.pi/2
             black_board.move_adv()

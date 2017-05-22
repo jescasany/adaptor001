@@ -13,7 +13,7 @@ import rospy
 from geometry_msgs.msg import Twist, Point, Quaternion
 import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
-from math import radians, sqrt, pow
+from math import radians, sqrt, pow, degrees
 
 def advance(distance, angle, da = True):
     """ Publisher to control the robot's speed """
@@ -67,8 +67,7 @@ def advance(distance, angle, da = True):
     position = Point()   
     # Initialize the movement command
     move_cmd = Twist()
-    # Set the movement command to forward motion
-    move_cmd.linear.x = linear_speed
+    
 
     # Get the starting position values     
     (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
@@ -80,6 +79,9 @@ def advance(distance, angle, da = True):
     dist = 0
 
     if da:
+        rospy.loginfo("da True")
+        # Set the movement command to forward motion
+        move_cmd.linear.x = linear_speed
         # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
             # Publish the Twist message and sleep 1 cycle         
@@ -112,12 +114,7 @@ def advance(distance, angle, da = True):
             # Add to the running total
             turn_angle += delta_angle
             last_angle = quat_to_angle(rotation)
-#            print "x", position.x
-#            print "y", position.y
-#            print "la", last_angle
-#            print "ta", degrees(turn_angle)
-#            print "\n"
-            #raw_input()
+
             if (abs(turn_angle + angular_tolerance) > abs(goal_angle*4/5) or abs(goal_angle) < radians(2)) and not done:
                 #pdb.set_trace()
                 # Stop the robot before the next leg
@@ -137,12 +134,15 @@ def advance(distance, angle, da = True):
         cmd_vel_pub.publish(move_cmd)
         rospy.sleep(1)
     else:
+        rospy.loginfo("da False")
+        #pdb.set_trace()
         # Set the movement command to a rotation
         move_cmd.angular.z = angular_speed
         # Track the last angle measured
         last_angle = quat_to_angle(rotation)
         # Track how far we have turned
         turn_angle = 0
+        done = False
         while abs(turn_angle + angular_tolerance) < abs(goal_angle) and not rospy.is_shutdown():
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
@@ -153,13 +153,43 @@ def advance(distance, angle, da = True):
             delta_angle = normalize_angle(quat_to_angle(rotation) - last_angle)
             # Add to the running total
             turn_angle += delta_angle
-            last_angle = quat_to_angle(rotation)            
-        # Stop the robot before the next leg
+            last_angle = quat_to_angle(rotation)
+#            print "x", position.x
+#            print "y", position.y
+#            print "la", last_angle
+#            print "ta", degrees(turn_angle)
+#            print "\n"
+            #raw_input("Press ENTER to continue ...")
+            if (abs(turn_angle + angular_tolerance) > abs(goal_angle*4/5) or abs(goal_angle) < radians(2)) and not done:
+                #pdb.set_trace()
+                # Stop the robot before the next leg
+                move_cmd = Twist()
+                cmd_vel_pub.publish(move_cmd)
+                rospy.sleep(1)
+                if angle < 0.0:
+                    angular_speed = -0.05
+                else:
+                    angular_speed = 0.05
+                # Set the movement command to a rotation
+                move_cmd.angular.z = angular_speed
+                done = True
+                
+        # Stop the robot before the next movement
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
-        rospy.sleep(1)        
-
-         # Enter the loop to move along
+        rospy.sleep(1)
+        print "Empieza distancia"
+#        pdb.set_trace()
+        # Get the starting position values     
+        (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
+                    
+        x_start = position.x
+        y_start = position.y
+        
+        move_cmd.linear.x = linear_speed
+        # Keep track of the distance traveled
+        dist = 0
+        # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
@@ -176,6 +206,7 @@ def advance(distance, angle, da = True):
     # Stop the robot for good
     cmd_vel_pub.publish(Twist())
     rospy.sleep(1)
+
     # Get the current rotation
     (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
     

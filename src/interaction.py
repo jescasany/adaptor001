@@ -12,7 +12,7 @@ from black_board_class import black_board_object
 
 import black_board 
 
-from boredom import *
+from boredom import boredom_handler
 
 
 
@@ -53,7 +53,7 @@ class Interaction:
         pdb.set_trace
         interaction = self
         if black_board_object.boredom:
-            return boredom_handler.process_boredom(black_board.ex.INTERACTIONS, interaction, self.valence)
+            return boredom_handler.process_boredom(black_board_object.ex.INTERACTIONS, interaction, self.valence)
         else:
             if self.is_primitive():
                 return self.valence

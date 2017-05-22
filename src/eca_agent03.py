@@ -33,7 +33,6 @@ from interaction import Interaction
 from boredom import *
 
 import argparse
-#from json import loads, dumps
 from collections import OrderedDict
 from experiment import Experiment, RecursiveExperiment
 from result import Result
@@ -41,7 +40,7 @@ from anticipation import Anticipation, RecursiveAnticipation, ConstructiveAntici
 import random
 
 
-class EcaAgent02:
+class EcaAgent03:
     INTERACTION_ENACTION_HISTORY_SIZE = 50
     def __init__(self):
         #pdb.set_trace()
@@ -84,7 +83,7 @@ class EcaAgent02:
             black_board_object.environment = ConstructiveEnvironment()
             black_board_object.ex = ConstructiveExistence(primitive_interactions, black_board_object.environment)
         # Create the root node
-        ECAAGENT02 = Sequence("ECAAGENT02")
+        ECAAGENT03 = Sequence("ECAAGENT03")
         
         START_STEP = CallbackTask("START STEP", black_board_object.ex.step)
         
@@ -92,18 +91,18 @@ class EcaAgent02:
         
         IS_VISITED = CallbackTask("is visited", self.is_visited)
         
-        ECAAGENT02.add_child(START_STEP)
-        ECAAGENT02.add_child(I_F_IS_VISITED)
+        ECAAGENT03.add_child(START_STEP)
+        ECAAGENT03.add_child(I_F_IS_VISITED)
         
         # Display the tree before beginning execution
-        print bcolors.HEADER + "ECAAGENT02 Behavior Tree" + bcolors.ENDC
-        print_tree(ECAAGENT02, indent=0, use_symbols=True)
-        print_dot_tree(ECAAGENT02, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree02.dot')
+        print bcolors.HEADER + "ECAAGENT03 Behavior Tree" + bcolors.ENDC
+        print_tree(ECAAGENT03, indent=0, use_symbols=True)
+        print_dot_tree(ECAAGENT03, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree02.dot')
         
         # Run the tree
         while not rospy.is_shutdown():
             #pdb.set_trace()
-            ECAAGENT02.run()
+            ECAAGENT03.run()
             decoded = Decode(black_board_object.step_trace)
             translated = decoded.get_translation()
             print bcolors.OKGREEN + str(black_board_object.sim_step) + " " +  str(translated) + bcolors.ENDC
@@ -131,7 +130,7 @@ class EcaAgent02:
             return True
         
     def shutdown(self):
-        rospy.loginfo("Stopping the agent...")
+        rospy.loginfo("MAIN Stopping the agent...")
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
     
@@ -388,12 +387,12 @@ class RecursiveExistence(Existence):
         for anticipation in anticipations:
             print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
             
-        pdb.set_trace()
+        #pdb.set_trace()
             
         experiment = self.select_experiment(anticipations)  # recursive experiment
         print bcolors.OKGREEN + "Selected experiment: " + experiment.get_label() + bcolors.ENDC
         intended_interaction = experiment.get_intended_interaction()
-        print bcolors.OKGREEN + "Intending: " + intended_interaction.__repr__() + bcolors.ENDC
+        print bcolors.OKGREEN + "Intending: " + repr(intended_interaction) + bcolors.ENDC
         print bcolors.OKGREEN + "Intending experiment: ", intended_interaction.get_experiment().get_label() + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
 
@@ -787,9 +786,6 @@ class ConstructiveExistence(RecursiveExistence):
                 random_interaction = random.choice(self.INTERACTIONS.values())
             return random_interaction
 
-
-# the kind of boredom handler that is going to be used
-boredom_handler = RepetitiveBoredomHandler()
     
 if __name__ == '__main__':
     #pdb.set_trace()
@@ -801,5 +797,5 @@ if __name__ == '__main__':
     
     black_board_object.agent_mechanism = args.mechanism
     
-    tree = EcaAgent02()
+    tree = EcaAgent03()
   

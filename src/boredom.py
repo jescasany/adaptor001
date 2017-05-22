@@ -151,3 +151,6 @@ class WeightRepetitiveBoredomHandler(BoredomHandler):
             )/2
         print bcolors.OKGREEN + "Interaction modified: " + repr(interaction) + "Modified valence: " + str(modified_valence) + bcolors.ENDC
         return modified_valence
+    
+# the kind of boredom handler that is going to be used
+boredom_handler = RepetitiveBoredomHandler()
