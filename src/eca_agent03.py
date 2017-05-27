@@ -23,8 +23,9 @@ from geometry_msgs.msg import Twist
 from pi_trees_ros.pi_trees_ros import *
 
 from advance import *
-import black_board
+
 from black_board_class import BlackBoard, black_board_object
+import black_board
 
 from fancy_prompts import bcolors
 from decode import Decode
@@ -44,7 +45,7 @@ class EcaAgent03:
     INTERACTION_ENACTION_HISTORY_SIZE = 50
     def __init__(self):
         #pdb.set_trace()
-        rospy.init_node("eca_agent01_tree")
+        rospy.init_node("eca_agent03_tree")
         # Set the shutdown function (stop the agent)
         rospy.on_shutdown(self.shutdown)
         # Publisher to manually control the agent (e.g. to stop it)
@@ -130,7 +131,7 @@ class EcaAgent03:
             return True
         
     def shutdown(self):
-        rospy.loginfo("MAIN Stopping the agent...")
+        print bcolors.WARNING + "MAIN stopping the agent..." + bcolors.ENDC
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
     
@@ -789,7 +790,7 @@ class ConstructiveExistence(RecursiveExistence):
     
 if __name__ == '__main__':
     #pdb.set_trace()
-    # run with  i.e. rosrun eca_agent01.py constructive
+    # run with  i.e. rosrun eca_agent03.py constructive
     parser = argparse.ArgumentParser()
     parser.add_argument("mechanism", type=str, help="specify the learning mechanism to be used",
                         choices=["simple", "recursive", "constructive"])

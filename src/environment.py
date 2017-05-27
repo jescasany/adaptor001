@@ -27,6 +27,7 @@ class Environment:
         result = None
         black_board.laser_scan()
         black_board.right_status()
+        black_board.front_status()
         if experiment.get_label() == 'e1':
             if black_board_object.Right1:
                 black_board_object.adv_distance = black_board_object.distance_front - 1.7
@@ -35,34 +36,59 @@ class Environment:
             black_board_object.adv_angle = 0.0
             black_board.move_adv()
             if not black_board_object.move_fail and black_board_object.Right1:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r1'  # moved forward following a wall on the right
             elif not black_board_object.move_fail:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r4'  # moving forward sensing no wall 
             else:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r10' # move failed: if robot bumps 
         elif experiment.get_label() == 'e2':
             #pdb.set_trace()
             black_board_object.adv_distance = 0.0
             black_board_object.adv_angle = math.pi/2
             black_board.move_adv()
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             result = 'r2'   # turn left
         elif experiment.get_label() == 'e3':
             black_board_object.adv_distance = 0.0
             black_board_object.adv_angle = -math.pi/2
             black_board.move_adv()
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             result = 'r3'   # turn right
         elif experiment.get_label() == 'e4':
             if black_board_object.driving_forward:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r4'  # front free: no wall
             else:
+                black_board.laser_scan()
+                black_board.right_status()
                 result = 'r5'  # front busy: wall in front
         elif experiment.get_label() == 'e5':
+            black_board.laser_scan()
             black_board.right_status()
+            black_board.front_status()
             if black_board_object.Right1:
                 result = 'r6'   # right sensing: wall on the right
             else:
                 result = 'r14'   # nothing on the right
         elif experiment.get_label() == 'e6':
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             black_board.left_status()
             if black_board_object.Left1:
                 result = 'r7'   # left sensing: wall on the left
@@ -94,6 +120,7 @@ class ConstructiveEnvironment:
         result = None
         black_board.laser_scan()
         black_board.right_status()
+        black_board.front_status()
         if experiment == 'e1':
             if black_board_object.Right1:
                 black_board_object.adv_distance = black_board_object.distance_front - 1.7
@@ -102,33 +129,56 @@ class ConstructiveEnvironment:
             black_board_object.adv_angle = 0.0
             black_board.move_adv()
             if not black_board_object.move_fail and black_board_object.Right1:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r1'   # moved forward following a wall on the right
             elif not black_board_object.move_fail:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r4'  # moving forward sensing no wall    
             else:
+                black_board.laser_scan()
+                black_board.right_status()
+                black_board.front_status()
                 result = 'r10' # move failed: if robot bumps
         elif experiment == 'e2':
             black_board_object.adv_distance = 0.0
             black_board_object.adv_angle = math.pi/2
             black_board.move_adv()
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             result = 'r2'   # turn left
         elif experiment == 'e3':
             black_board_object.adv_distance = 0.0
             black_board_object.adv_angle = -math.pi/2
             black_board.move_adv()
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             result = 'r3'   # turn right
         elif experiment == 'e4':
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             if black_board_object.driving_forward:
                 result = 'r4'  # front free: no wall
             else:
                 result = 'r5'  # front busy: wall in front
         elif experiment == 'e5':
+            black_board.laser_scan()
             black_board.right_status()
+            black_board.front_status()
             if black_board_object.Right1:
                 result = 'r6'   # right sensing: wall on the right
             else:
                 result = 'r14'   # nothing on the right
         elif experiment == 'e6':
+            black_board.laser_scan()
+            black_board.right_status()
+            black_board.front_status()
             black_board.left_status()
             if black_board_object.Left1:
                 result = 'r7'   # left sensing: wall on the left

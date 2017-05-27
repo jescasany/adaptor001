@@ -15,6 +15,8 @@ import tf
 from rbx1_nav.transform_utils import quat_to_angle, normalize_angle
 from math import radians, sqrt, pow, degrees
 
+from fancy_prompts import bcolors
+
 def advance(distance, angle, da = True):
     """ Publisher to control the robot's speed """
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
@@ -79,7 +81,7 @@ def advance(distance, angle, da = True):
     dist = 0
 
     if da:
-        rospy.loginfo("da True")
+        print bcolors.OKGREEN + "da True" + bcolors.ENDC
         # Set the movement command to forward motion
         move_cmd.linear.x = linear_speed
         # Enter the loop to move along
@@ -134,7 +136,7 @@ def advance(distance, angle, da = True):
         cmd_vel_pub.publish(move_cmd)
         rospy.sleep(1)
     else:
-        rospy.loginfo("da False")
+        print bcolors.OKGREEN + "da False" + bcolors.ENDC
         #pdb.set_trace()
         # Set the movement command to a rotation
         move_cmd.angular.z = angular_speed
@@ -178,7 +180,7 @@ def advance(distance, angle, da = True):
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
         rospy.sleep(1)
-        print "Empieza distancia"
+        print bcolors.OKGREEN + "Empieza distancia" + bcolors.ENDC 
 #        pdb.set_trace()
         # Get the starting position values     
         (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)

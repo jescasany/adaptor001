@@ -22,10 +22,11 @@ from black_board_class import BlackBoard, black_board_object
 def create_lines_marker(lines):
     marker = Marker()
     #pdb.set_trace()
+    marker_lifetime = 0 # 0 is forever
     # Get the pairs of points that comprise the endpoints for all lines
     marker.points = generate_endpoints(lines)
-    print 'Marker points: '
-    print marker.points
+#    print 'Marker points: '
+#    print marker.points
 
     # Initialize basic fields of the marker
     marker.header.frame_id = lines.header.frame_id
@@ -33,14 +34,16 @@ def create_lines_marker(lines):
     marker.id = 0
     marker.type = Marker.LINE_LIST
     marker.action = Marker.ADD
+    #marker.lifetime = rospy.Duration(marker_lifetime)
 
     # The marker's pose is at (0,0,0) with no rotation.
     marker.pose.orientation.w = 1
 
     # Set line width
-    marker.scale.x = 0.05
+    marker.scale.x = 0.02
 
     n = len(lines.lines)
+    #print "Numero de lineas(lines)", n
     if n == 1:
         # There is only one line.  Just set the color field.
         marker.color.g = 1.0
@@ -56,30 +59,36 @@ def create_lines_marker(lines):
             color.a = 1.0
             marker.colors.append(color)
             marker.colors.append(color)
+            
+    #print "Marker", marker
 
     black_board_object.lines_publisher.publish(marker)
-    rospy.sleep(1)
+    rospy.sleep(5)
+    #raw_input("Press ENTER to continue...")
 
 def create_scanpoints_marker(lines):
     marker = Marker()
     #pdb.set_trace()
+    marker_lifetime = 0 # 0 is forever
     # Initialize basic fields of the marker
     marker.header.frame_id = lines.header.frame_id
     marker.header.stamp = rospy.Time()
     marker.id = 0
     marker.type = Marker.POINTS
     marker.action = Marker.ADD
-
+    #marker.lifetime = rospy.Duration(marker_lifetime)
+    
     # The marker's pose is at (0,0,0) with no rotation.
     marker.pose.orientation.w = 1
 
     # Set point width
-    marker.scale.x = 0.10
-    marker.scale.y = 0.10
+    marker.scale.x = 0.08
+    marker.scale.y = 0.08
 
     # Add the scan points
     marker.points = []
     n = len(lines.lines)
+    #print "Numero de linea(points)s", n
     for i in range(n):
         marker.points.append(lines.lines[i].firstScanPoint)
         marker.points.append(lines.lines[i].lastScanPoint)
@@ -99,9 +108,12 @@ def create_scanpoints_marker(lines):
             color.a = 1.0
             marker.colors.append(color)
             marker.colors.append(color)
-
+    
+    #print "Marker", marker
+    
     black_board_object.scanpoints_publisher.publish(marker)
-    rospy.sleep(1)
+    rospy.sleep(5)
+    #raw_input("Press ENTER to continue...")
 
 def generate_endpoints(lines):
     """
@@ -119,6 +131,7 @@ def generate_endpoints(lines):
     points = []
 
     n = len(lines.lines)
+    #print "Numero de lineas(gen_markers)", n
     for i in range(n):
         r = lines.lines[i].r
         alpha = lines.lines[i].alpha - pi/2

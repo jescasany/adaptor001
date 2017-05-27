@@ -16,9 +16,13 @@ from visualization_msgs.msg import Marker
 
 """ A class to track black_board.variables """
 class BlackBoard:
+    
     def __init__(self):
-        # Initialize the patrol counter
+        
+        # Initialize the move counter
         self.move_count = 0
+        # Initialize the line counter
+        self.line_count = 0
         # initialize one simulation step (that might consist of several primitive steps)
         self.sim_step = 1
         # Initialize a number of variables for the blackboard
@@ -31,31 +35,39 @@ class BlackBoard:
         self.driving_forward = True      # is True if there is no obstacle ahead 
         self.move_fail = False       #  whether move_adv fails or not
         
+        self.limit_range = 4.5
         self.distance_to_right_wall = 1.5
         self.last_distance = 1.5
         self.distance_to_left_wall = 5.0
         self.right_wall_angle = 0.0
         self.left_wall_angle = 0.0
-        self.distance_to_front = 7.0
+        self.front_wall_angle = 0.0
+        self.distance_to_front_wall = 7.0
         self.Left1 = False
         self.Left2 = False
         self.Left3 = False
         self.Right1 = False
         self.Right2 = False
         self.Right3 = False
+        self.Front2 = False
+        self.Front1 = False
+        self.Front3 = False
         # The agent's current position on the map
         self.agent_position = Point()
         self.agent_rotation = Quaternion()
         self.agent_pose = (Point(), Quaternion())
+        self.agent_rotation_angle = 0.0
         # Create a dictionary to hold navigation waypoints
         self.waypoints = list()
         (self.agent_position, self.agent_rotation) = self.agent_pose 
         self.odom_angle = 0.0
         self.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms
         self.boredom = False
+        
         self.line = ExtractedLine()
         self.lines = ExtractedLines()
-        
+        self.lines.header.frame_id = '/base_link'
+    
         self.follow_offset = rospy.get_param('follow_offset')
         self.follow_advance = rospy.get_param('follow_advance')
         
@@ -71,17 +83,17 @@ class BlackBoard:
         
         self.cmd_vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         # Create our publisher for the lines extracted within 'base_scan' callback
-        self.extracted_publisher = rospy.Publisher('/extracted_lines', ExtractedLines, queue_size=10)
+        self.extracted_publisher = rospy.Publisher('/extracted_lines', ExtractedLines, queue_size=100)
         # We will publish to vis_lines_topic which will show the lines (as
         # line segments) in RViz.  We will also publish the first and last scan
         # points to topic vis_scanpoints_topic in the same colour so that it
         # is clear from what range of scan points the lines are generated.
-        self.lines_publisher = rospy.Publisher(self.vis_lines_topic, Marker, queue_size=10)
-        self.scanpoints_publisher = rospy.Publisher(self.vis_scanpoints_topic, Marker, queue_size=10)
+        self.lines_publisher = rospy.Publisher(self.vis_lines_topic, Marker, queue_size=100)
+        self.scanpoints_publisher = rospy.Publisher(self.vis_scanpoints_topic, Marker, queue_size=100)
         self.selected_lines_publisher = rospy.Publisher('/extracted_lines_wf', \
-                               ExtractedLines, queue_size=10)
+                               ExtractedLines, queue_size=100)
 
         
 # Initialize the blackboard
 black_board_object = BlackBoard()
-    
+   
