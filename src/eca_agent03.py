@@ -588,7 +588,7 @@ class RecursiveExistence(Existence):
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
-        pdb.set_trace
+        #pdb.set_trace
         label = "<" + pre_interaction.get_label() + post_interaction.get_label() + ">"
         interaction = self.get_interaction(label)
         if interaction is None:
