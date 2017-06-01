@@ -8,7 +8,7 @@ Created on Wed May 10 11:06:28 2017
 
 import pdb
 
-from black_board_class import black_board_object
+from black_board_class import bbo
 
 import black_board 
 
@@ -52,8 +52,8 @@ class Interaction:
     def get_valence(self):
         pdb.set_trace
         interaction = self
-        if black_board_object.boredom:
-            return boredom_handler.process_boredom(black_board_object.ex.INTERACTIONS, interaction, self.valence)
+        if bbo.boredom:
+            return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
         else:
             if self.is_primitive():
                 return self.valence

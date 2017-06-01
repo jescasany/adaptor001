@@ -11,7 +11,7 @@ from collections import Counter
 import math
 from fancy_prompts import bcolors
 import black_board
-from black_board_class import black_board_object
+from black_board_class import bbo
 
 # class that represent an agent's boredom handler.    
 class BoredomHandler(object):

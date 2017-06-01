@@ -24,8 +24,8 @@ from pi_trees_ros.pi_trees_ros import *
 
 from advance import *
 
-from black_board_class import BlackBoard, black_board_object
-import black_board
+from black_board_class import BlackBoard, bbo
+import black_board as bb
 
 from fancy_prompts import bcolors
 from decode import Decode
@@ -54,7 +54,7 @@ class EcaAgent03:
         rate = rospy.Rate(10)
 
          # initialize existence
-        black_board_object.ex = None
+        bbo.ex = None
         # initialize primitive interactions
         primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
                                   "move forward no wall": ("e1", "r4", -20),\
@@ -73,20 +73,20 @@ class EcaAgent03:
                                   "nothing on left1": ("e6", "r13", 0)
 }
         # initialize environments and existences
-        self.mechanism = black_board_object.agent_mechanism
+        self.mechanism = bbo.agent_mechanism
         if self.mechanism == "simple":
-            black_board_object.environment = Environment()
-            black_board_object.ex = Existence(primitive_interactions, black_board_object.environment)
+            bbo.environment = Environment()
+            bbo.ex = Existence(primitive_interactions, bbo.environment)
         elif self.mechanism == "recursive":
-            black_board_object.environment = Environment()
-            black_board_object.ex = RecursiveExistence(primitive_interactions, black_board_object.environment)
+            bbo.environment = Environment()
+            bbo.ex = RecursiveExistence(primitive_interactions, bbo.environment)
         elif self.mechanism == "constructive":
-            black_board_object.environment = ConstructiveEnvironment()
-            black_board_object.ex = ConstructiveExistence(primitive_interactions, black_board_object.environment)
+            bbo.environment = ConstructiveEnvironment()
+            bbo.ex = ConstructiveExistence(primitive_interactions, bbo.environment)
         # Create the root node
         ECAAGENT03 = Sequence("ECAAGENT03")
         
-        START_STEP = CallbackTask("START STEP", black_board_object.ex.step)
+        START_STEP = CallbackTask("START STEP", bbo.ex.step)
         
         I_F_IS_VISITED =IgnoreFailure("I_F IS VISITED")
         
@@ -104,26 +104,26 @@ class EcaAgent03:
         while not rospy.is_shutdown():
             #pdb.set_trace()
             ECAAGENT03.run()
-            decoded = Decode(black_board_object.step_trace)
+            decoded = Decode(bbo.step_trace)
             translated = decoded.get_translation()
-            print bcolors.OKGREEN + str(black_board_object.sim_step) + " " +  str(translated) + bcolors.ENDC
+            print bcolors.OKGREEN + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
             print "\n"
             
             #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
             
-            if len(black_board_object.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
-                black_board_object.ex.INTERACTIONS.popitem(last=False)
+            if len(bbo.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
+                bbo.ex.INTERACTIONS.popitem(last=False)
                 
-            if black_board_object.sim_step >= 3:
-                black_board_object.boredom = True
-            black_board_object.sim_step += 1
+            if bbo.sim_step >= 3:
+                bbo.boredom = True
+            bbo.sim_step += 1
             rate.sleep()   
     
     def is_visited(self):
-        if black_board_object.move_count == 0:
+        if bbo.move_count == 0:
             rospy.loginfo("Waypoint is not visited.")
             return True
-        if (black_board_object.agent_position, black_board_object.agent_rotation) in black_board_object.waypoints[0:-1]:
+        if (bbo.agent_position, bbo.agent_rotation) in bbo.waypoints[0:-1]:
             rospy.loginfo("Waypoint is visited.")
             return True
         else:
@@ -190,7 +190,7 @@ class Existence:
         self.learn_composite_interaction(self.context_interaction, enacted_interaction)
         self.context_interaction = enacted_interaction
 
-        black_board_object.step_trace = experiment.get_label() + result.get_label() + " " + self.mood
+        bbo.step_trace = experiment.get_label() + result.get_label() + " " + self.mood
         
         return 1
 
@@ -413,7 +413,7 @@ class RecursiveExistence(Existence):
 
         # learn context_pair_interaction, context_interaction, enacted_interaction
         self.learn_recursive_interaction(enacted_interaction)
-        black_board_object.step_trace = enacted_interaction.__repr__() + " " + self.mood
+        bbo.step_trace = enacted_interaction.__repr__() + " " + self.mood
         
 #        print self.EXPERIMENTS
 #        print "\n"
@@ -476,7 +476,7 @@ class RecursiveExistence(Existence):
 
     def select_experiment(self, anticipations):
         #pdb.set_trace()
-        if black_board_object.move_count > 1:
+        if bbo.move_count > 1:
             anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
             selected_anticipation = anticipations[0]
             return selected_anticipation.get_experiment()
@@ -643,7 +643,7 @@ class ConstructiveExistence(RecursiveExistence):
             self.mood = 'SAD'
 
         self.learn_recursive_interaction(enacted_interaction)
-        black_board_object.step_trace = enacted_interaction.__repr__() + " " + self.mood
+        bbo.step_trace = enacted_interaction.__repr__() + " " + self.mood
         
 #        print self.EXPERIMENTS
 #        print "\n"
@@ -796,7 +796,7 @@ if __name__ == '__main__':
                         choices=["simple", "recursive", "constructive"])
     args = parser.parse_args()
     
-    black_board_object.agent_mechanism = args.mechanism
+    bbo.agent_mechanism = args.mechanism
     
     tree = EcaAgent03()
   

@@ -7,7 +7,7 @@ Created on Wed May 10 20:18:58 2017
 """
 import pdb
 
-from black_board_class import black_board_object
+from black_board_class import bbo
 import rospy
 
 import math
@@ -27,9 +27,9 @@ from fancy_prompts import bcolors
 from angles import constrain_angle
 
 def print_position():
-    print black_board_object.move_count
-    print black_board_object.agent_position
-    print black_board_object.agent_rotation
+    print bbo.move_count
+    print bbo.agent_position
+    print bbo.agent_rotation
     
 def plotter((x, y), name):    
     """
@@ -83,7 +83,7 @@ def get_close():
     """
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
     line = None
-    lines = black_board_object.lines
+    lines = bbo.lines
     smallestR = float('inf')
     for l in lines.lines:
         if l.r < smallestR:
@@ -119,34 +119,35 @@ def get_close():
         sel_line.alpha = line.alpha
         sel_lines.lines.append(sel_line)
         
-        black_board_object.selected_lines_publisher.publish(sel_lines)
+        bbo.selected_lines_publisher.publish(sel_lines)
 
-        fo = black_board_object.follow_offset
-        #fa = black_board_object.follow_advance
-        fa = black_board_object.distance_front
-        dist = max(black_board_object.distance_to_right_wall, line.r) 
-        black_board_object.adv_distance = math.sqrt(math.pow(dist - fo, 2) + math.pow(fa, 2))
+        fo = bbo.follow_offset
+        #fa = bbo.follow_advance
+        fa = bbo.distance_front
+        #dist = min(bbo.distance_to_right_wall, line.r)
+        dist = bbo.distance_to_right_wall
+        bbo.adv_distance = math.sqrt(math.pow(dist - fo, 2) + math.pow(fa, 2))
         th = math.pi/2 - math.atan(fa/abs(dist - fo))
-        black_board_object.adv_angle = th
+        bbo.adv_angle = th
         if (dist - fo) > 0:
-            black_board_object.adv_angle = -th
-        print bcolors.OKBLUE + "black_board_object.adv_distance: " +  str(black_board_object.adv_distance) + " m" + bcolors.ENDC
-        print bcolors.OKBLUE + "black_board_object.adv_angle: " +  str(math.degrees(black_board_object.adv_angle)) + " deg" + bcolors.ENDC 
+            bbo.adv_angle = -th
+        print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
+        print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
     
         # Publish the twist message produced by the controller.
         print bcolors.OKBLUE + "STOP the agent before wall following" + bcolors.ENDC
-        black_board_object.cmd_vel_publisher.publish(Twist())
+        bbo.cmd_vel_publisher.publish(Twist())
         rospy.sleep(2)
         #pdb.set_trace()
         #raw_input("Press ENTER to continue...")
         laser_scan()
-        if black_board_object.driving_forward:
-            (black_board_object.agent_position, black_board_object.agent_rotation) = advance(black_board_object.adv_distance, black_board_object.adv_angle, da=False)
+        if bbo.driving_forward:
+            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=False)
         else:
-           (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, black_board_object.adv_angle, da=False) 
+           (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False) 
             
         rospy.sleep(2)
-        black_board_object.agent_rotation_angle = arrange()
+        bbo.agent_rotation_angle = arrange()
         
 def fit_line(scan, start_index, end_index, maximum_range, status):
     """ 
@@ -179,17 +180,17 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
     sumDenR = 0 # The summation term in the denominator on the right
     
     if status == "R":
-        angle_min = black_board_object.angle_min
+        angle_min = bbo.angle_min
     if status == "L":
-        angle_min = black_board_object.angle_min + 574 * black_board_object.angle_increment
+        angle_min = bbo.angle_min + 574 * bbo.angle_increment
     if status == "F":
-        angle_min = black_board_object.angle_min + 270 * black_board_object.angle_increment
+        angle_min = bbo.angle_min + 270 * bbo.angle_increment
         
     for i in range(start_index, end_index+1):
         rho = scan[i]
         if rho == 0 or rho > maximum_range:
             continue
-        theta = angle_min + i * black_board_object.angle_increment
+        theta = angle_min + i * bbo.angle_increment
         weight = 1 / rho**2
         #weight = 1
 
@@ -203,7 +204,7 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
             rho_j = scan[j]
             if rho_j == 0 or rho_j > maximum_range:
                 continue
-            theta_j = angle_min + j * black_board_object.angle_increment
+            theta_j = angle_min + j * bbo.angle_increment
             weight_j = 1 / rho_j**2
             #weight_j = 1
 
@@ -225,7 +226,7 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
         rho = scan[i]
         if rho == 0 or rho > maximum_range:
             continue
-        theta = angle_min + i * black_board_object.angle_increment
+        theta = angle_min + i * bbo.angle_increment
         weight = 1 / rho**2
         #weight = 1
 
@@ -249,12 +250,12 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
     firstScanPoint = Point32()
     lastScanPoint = Point32()
     dist = scan[start_index]
-    angle = angle_min + start_index * black_board_object.angle_increment
+    angle = angle_min + start_index * bbo.angle_increment
     if dist <= maximum_range:
         firstScanPoint.x = dist * math.cos(angle)
         firstScanPoint.y = dist * math.sin(angle)
     dist = scan[end_index]
-    angle = angle_min + end_index * black_board_object.angle_increment
+    angle = angle_min + end_index * bbo.angle_increment
     if dist <= maximum_range:
         lastScanPoint.x = dist * math.cos(angle)
         lastScanPoint.y = dist * math.sin(angle)
@@ -267,10 +268,10 @@ def right_wall_param(r, start_index, end_index, maximum_range, status):
     line = fit_line(r, start_index, end_index, maximum_range, status)
     if line is not None:
         # approximate wall_angle (degrees)
-        black_board_object.right_wall_angle = normalize_angle(line.alpha)*180./math.pi
+        bbo.right_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
         dist = min(r)
-        black_board_object.distance_to_right_wall = min(dist, abs(line.r))
+        bbo.distance_to_right_wall = min(dist, abs(line.r))
 
     return line
     
@@ -279,10 +280,10 @@ def left_wall_param(r, start_index, end_index, maximum_range, status):
     line = fit_line(r, start_index, end_index, maximum_range, status)
     if line is not None:
         # approximate wall_angle (degrees)
-        black_board_object.left_wall_angle = normalize_angle(line.alpha)*180./math.pi
+        bbo.left_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
         dist = min(r)
-        black_board_object.distance_to_left_wall = min(dist, abs(line.r))
+        bbo.distance_to_left_wall = min(dist, abs(line.r))
 
     return line
 
@@ -292,10 +293,10 @@ def front_wall_param(r, start_index, end_index, maximum_range, status):
     line = fit_line(r, start_index, end_index, maximum_range, status)
     if line is not None:
         # approximate wall_angle (degrees)
-        black_board_object.front_wall_angle = normalize_angle(line.alpha)*180./math.pi
+        bbo.front_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
         dist = min(r)
-        black_board_object.distance_to_front_wall = min(dist, abs(line.r))
+        bbo.distance_to_front_wall = min(dist, abs(line.r))
 
     return line
 
@@ -315,7 +316,7 @@ def extract_lines(r, status = 'R'):
     end_index = n-1
     done_si = False
     for i in range(n):
-        if r[i] < black_board_object.maximum_range and r[i] != 0.0:
+        if r[i] < bbo.maximum_range and r[i] != 0.0:
             if not done_si:
                 start_index = i
                 done_si = True
@@ -327,48 +328,48 @@ def extract_lines(r, status = 'R'):
 #    raw_input('Enter to continue')
     #pdb.set_trace()
     if status == 'R':
-        line = right_wall_param(r, start_index, end_index, black_board_object.maximum_range, status)
+        line = right_wall_param(r, start_index, end_index, bbo.maximum_range, status)
         if line is None:
             return line
-        if line.r > black_board_object.distance_to_right_wall:
-            line = None
+#        if line.r > bbo.distance_to_right_wall:
+#            line = None
     elif status == 'L':
-        line = left_wall_param(r, start_index, end_index, black_board_object.maximum_range, status)
+        line = left_wall_param(r, start_index, end_index, bbo.maximum_range, status)
         if line is None:
             return line
-        if line.r > black_board_object.distance_to_left_wall:
+        if line.r > bbo.distance_to_left_wall:
             line = None
     elif status == 'F':
-        line = front_wall_param(r, start_index, end_index, black_board_object.maximum_range, status)
+        line = front_wall_param(r, start_index, end_index, bbo.maximum_range, status)
         if line is None:
             return line
-        if line.r > black_board_object.distance_to_front_wall:
+        if line.r > bbo.distance_to_front_wall:
             line = None
     if line is not None:
-        if line.r > black_board_object.maximum_range or (abs(line.alpha) > math.radians(10) and abs(line.alpha) < math.radians(80)):
+        if line.r > bbo.maximum_range or (abs(line.alpha) > math.radians(10) and abs(line.alpha) < math.radians(80)):
             line = None
     return line
 
 def clear_lines():
-    lines = black_board_object.lines
+    lines = bbo.lines
     for l in lines.lines:
-        if l.r > black_board_object.distance_to_right_wall or l.r > black_board_object.distance_front:
-            black_board_object.lines.lines.remove(l)
+        if l.r > bbo.distance_to_right_wall or l.r > bbo.distance_front:
+            bbo.lines.lines.remove(l)
             
 def line_storage(line):
-    if line is not None and line not in black_board_object.lines.lines:
-        black_board_object.lines.lines.append(line)
-        if len(black_board_object.lines.lines) > 2:
-            black_board_object.lines.lines.pop(0)
-#    print len(black_board_object.lines.lines)
+    if line is not None and line not in bbo.lines.lines:
+        bbo.lines.lines.append(line)
+        if len(bbo.lines.lines) > 2:
+            bbo.lines.lines.pop(0)
+#    print len(bbo.lines.lines)
 #    print bcolors.OKGREEN + "LINES: " + bcolors.ENDC
-#    print black_board_object.lines
+#    print bbo.lines
     
     #raw_input('Enter to continue')
     
 def line_display():
     # Subscribe to 'lines_topic'
-    black_board_object.extracted_publisher.publish(black_board_object.lines)
+    bbo.extracted_publisher.publish(bbo.lines)
 #    rospy.loginfo("Waiting for lines_topic...")
 #    rospy.wait_for_message('/extracted_lines', ExtractedLines)
     rospy.Subscriber('/extracted_lines', ExtractedLines, display_callback, queue_size=10)
@@ -381,24 +382,24 @@ def laser_scan():
     # Subscribe the /base_scan topic to get the range readings  
     rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, scan_callback, queue_size = 10)
     rospy.sleep(0.1)
-    black_board_object.distance_front = min(black_board_object.kinect_scan[300:338])
-    if black_board_object.distance_front <= 1.7:
-        black_board_object.driving_forward = False
+    bbo.distance_front = min(bbo.kinect_scan[300:338])
+    if bbo.distance_front <= 1.7:
+        bbo.driving_forward = False
     else:
-        if black_board_object.Right1:
-            black_board_object.adv_distance = black_board_object.distance_front - 1.7
-        elif black_board_object.Right2 or black_board_object.Right3:
-            black_board_object.adv_distance = 1.0
+        if bbo.Right1:
+            bbo.adv_distance = bbo.distance_front - 1.7
+        elif bbo.Right2 or bbo.Right3:
+            bbo.adv_distance = 1.0
         else:
-            black_board_object.adv_distance = 0.0
+            bbo.adv_distance = 0.0
             
-        black_board_object.driving_forward = True
+        bbo.driving_forward = True
     #rospy.loginfo("laser_scan done")
     
 def scan_callback(msg):
-    black_board_object.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
-    black_board_object.angle_min = msg.angle_min
-    black_board_object.angle_increment = msg.angle_increment
+    bbo.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
+    bbo.angle_min = msg.angle_min
+    bbo.angle_increment = msg.angle_increment
     
 def formule(L, tolerance):
     f = 0
@@ -439,34 +440,37 @@ def clamp(self, val, minimum, maximum):
             return val
     
 def arrange():
+    bbo.arrange_status = True
     laser_scan()
     right_status()
     front_status()
     # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
-    agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board_object.agent_rotation)))
+    agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
     #pdb.set_trace()
     angle_rad_rot = math.radians(agent_rotation_angle)
     if abs(agent_rotation_angle) < 45:
         turn = -angle_rad_rot
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, turn, da=True)
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
     if abs(agent_rotation_angle) < 90 and abs(agent_rotation_angle) >= 45:
         turn = sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, turn, da=True)
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
     if abs(agent_rotation_angle) < 135 and abs(agent_rotation_angle) >= 90:
         turn = -sign(angle_rad_rot)*abs(math.pi/2 - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, turn, da=True)
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
     if abs(agent_rotation_angle) >= 135:
         turn = sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, turn, da=True)
-    if black_board_object.Right1 == False and black_board_object.Right2 == False and black_board_object.Right3 == False and black_board_object.move_count > 1:
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, -math.pi/2, da=True)
-    if black_board_object.Right1 == True and black_board_object.Right2 == True and black_board_object.Right3 == True and black_board_object.driving_forward == False:
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, math.pi/2, da=True)
-    agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(black_board_object.agent_rotation)))
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
+    if bbo.Right1 == False and bbo.Right2 == False and bbo.Right3 == False and bbo.move_count > 1:
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -math.pi/2, da=True)
+        
+    if bbo.Right2 == True and bbo.driving_forward == False:
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, math.pi/2, da=True)
+    agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
+    bbo.arrange_status = False
     return agent_rotation_angle
     
 def move_adv():
@@ -474,117 +478,123 @@ def move_adv():
     #pdb.set_trace()
     try:
         #raw_input("Press a key to continue...")
-        if black_board_object.move_count == 0:
+        if bbo.move_count == 0:
             print bcolors.OKGREEN + "PREPARING THINGS IN MY PLACE" + bcolors.ENDC
             # agent_pose is a tuple (position, rotation)
-            (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, 0.0, da=True)
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, 0.0, da=True)
             print_position()
-            black_board_object.waypoints.append((black_board_object.agent_position, black_board_object.agent_rotation))
-            black_board_object.move_count += 1
+            bbo.waypoints.append((bbo.agent_position, bbo.agent_rotation))
+            bbo.move_count += 1
             print bcolors.OKBLUE + "Preparation DONE" + bcolors.ENDC
-            black_board_object.agent_rotation_angle = arrange()
+            bbo.agent_rotation_angle = arrange()
             return 1
         
         laser_scan()
         rospy.sleep(2)
-        if black_board_object.driving_forward or black_board_object.adv_distance == 0.0:
+        if bbo.driving_forward or bbo.adv_distance == 0.0:
             get_close()
         laser_scan()
         rospy.sleep(2)
-        if black_board_object.driving_forward or black_board_object.adv_distance == 0.0:    
-            (black_board_object.agent_position, black_board_object.agent_rotation) = advance(black_board_object.adv_distance, 0.0, da=True)
+        if bbo.driving_forward or bbo.adv_distance == 0.0:    
+            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, 0.0, da=True)
             
-            black_board_object.adv_angle = 0.0
+            bbo.adv_angle = 0.0
             print_position()
 #            raw_input("Press a key to continue...")
-            black_board_object.waypoints.append((black_board_object.agent_position, black_board_object.agent_rotation))
-            black_board_object.move_count += 1
+            bbo.waypoints.append((bbo.agent_position, bbo.agent_rotation))
+            bbo.move_count += 1
             print bcolors.OKBLUE + "move_adv DONE" + bcolors.ENDC
-            black_board_object.move_fail = False
+            bbo.move_fail = False
         else:
             print bcolors.OKBLUE + "move_adv FAILED" + bcolors.ENDC
-            (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, 0.0, da=True)
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, 0.0, da=True)
             
-            black_board_object.move_fail = True
+            bbo.move_fail = True
             
     except:
         print bcolors.OKBLUE + "move_adv FAILED" + bcolors.ENDC
-        (black_board_object.agent_position, black_board_object.agent_rotation) = advance(0.0, 0.0, da=True)
-        black_board_object.move_fail = True
-        black_board_object.agent_rotation_angle = arrange()
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, 0.0, da=True)
+        bbo.move_fail = True
+        bbo.agent_rotation_angle = arrange()
         return 1
-    black_board_object.agent_rotation_angle = arrange()
+    bbo.agent_rotation_angle = arrange()
     return 1
 
 
 def right_status():
-    print bcolors.OKBLUE + "Estoy en right status" + bcolors.ENDC
+    if bbo.arrange_status:
+        print bcolors.OKBLUE + "Estoy en right status desde arrange" + bcolors.ENDC
+    elif bbo.environment_status:
+        print bcolors.OKBLUE + "Estoy en right status desde environment" + bcolors.ENDC
     laser_scan()
+    
+    pdb.set_trace()
+    
     rospy.sleep(2)
-    if black_board_object.move_count == 0:
+    if bbo.move_count == 0:
         return 1
     r = list()
-    r = black_board_object.kinect_scan
-    black_board_object.lines.header.stamp = rospy.Time.now()
+    r = bbo.kinect_scan
+    bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[0:200], "Right")
     
     filtered_scan, singularities = moving_window_filtro(r[0:200], tolerance=0.1, n_neighbors=1)
     
+    tracks = list()
     r1 = r[0:65]
     r2 = r[65:130]
     r3 = r[130:200]
-    if len(singularities) != 0: 
+    tracks.append(r1)
+    tracks.append(r2)
+    tracks.append(r3)
+    
+    if len(singularities) != 0:
+        for i in range(len(singularities)):
+            singularities[i] = singularities[i] + 1
+        singularities.insert(0, 0)
+        singularities.append(200)
         print bcolors.OKBLUE + "Right singularities: " + repr(singularities) + bcolors.ENDC
-        r1 = r[0:singularities[0]]
-        if len(singularities) > 1:
-            r2 = r[singularities[0]:singularities[1]]
-        if len(singularities) > 2:
-            r3 = r[singularities[1]:singularities[2]]
+        tracks = []
+        for i in range(len(singularities)-1):
+            tracks.append(r[singularities[i]:singularities[i+1]])
+        print tracks
+        
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
     line = ExtractedLine()
-    if min(r1) < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Right1 sensing" + bcolors.ENDC
-        
-        line = extract_lines(r1, status = 'R')
-
-        line_storage(line)
-        
-
-        print bcolors.OKBLUE + "odom_angle: " +  str(black_board_object.agent_rotation_angle) + bcolors.ENDC
-        print bcolors.OKBLUE + "wall_angle: " +  str(black_board_object.right_wall_angle) + bcolors.ENDC
-        print bcolors.OKBLUE + "distance to right wall(rho): " +  str(black_board_object.distance_to_right_wall) + bcolors.ENDC
-        print bcolors.OKBLUE + "distance to front obstacle: " +  str(black_board_object.distance_front) + bcolors.ENDC
-        black_board_object.Right1 = True
-        black_board_object.adv_distance = black_board_object.distance_front - 1.7
-    else:
-        print bcolors.OKBLUE + "Nothing on the right1" + bcolors.ENDC
-        black_board_object.adv_distance = 0.0
-        black_board_object.Right1 = False
-        
-    av_distance2 = sum(r2)/65.
-    if av_distance2 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Right2 sensing" + bcolors.ENDC
-        if black_board_object.Right1 == False:
-            line = extract_lines(r2, status = 'R')
+    count = 1
+    for t in tracks:
+        if min(t) < bbo.maximum_range:
+            print bcolors.OKBLUE + "Right" + str(count) + " sensing" + bcolors.ENDC
+            line = extract_lines(t, status = 'R')
             line_storage(line)
+            
+            count += 1
+            print bcolors.OKBLUE + "odom_angle: " +  str(bbo.agent_rotation_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "wall_angle: " +  str(bbo.right_wall_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "distance to right wall(rho): " +  str(bbo.distance_to_right_wall) + bcolors.ENDC
+            print bcolors.OKBLUE + "distance to front obstacle: " +  str(bbo.distance_front) + bcolors.ENDC
+            bbo.Right.append(True)
+            bbo.adv_distance = bbo.distance_front - 1.7
+            if line is not None:
+                line_display()
+        else:
+            print bcolors.OKBLUE + "Nothing on the right" + str(count) + bcolors.ENDC
+            bbo.adv_distance = 0.0
+            bbo.Right.append(False)
+            count += 1
+            
+    n = len(bbo.Right)
+    if n == 1:
+        bbo.Right1 = bbo.Right[0]
+    elif n == 2:
+        bbo.Right1 = bbo.Right[0]
+        bbo.Right2 = bbo.Right[1]
+    elif n == 3:
+        bbo.Right1 = bbo.Right[0]
+        bbo.Right2 = bbo.Right[1]
+        bbo.Right3 = bbo.Right[2]
         
-        black_board_object.Right2 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the right2" + bcolors.ENDC
-        black_board_object.Right2 = False
-    #raw_input("Press ENTER to continue...")    
-    av_distance3 = sum(r3)/70.
-    if av_distance3 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Right3 sensing" + bcolors.ENDC
-        if black_board_object.Right1 == False and black_board_object.Right2 == False:
-            line = extract_lines(r3, status = 'R')
-            line_storage(line)
-        
-        black_board_object.Right3 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the right3" + bcolors.ENDC
-        black_board_object.Right3 = False
     #raw_input("Press ENTER to continue...")
     if line is not None:
         line_display()
@@ -592,76 +602,82 @@ def right_status():
     return 1
 
 def left_status():
-    print bcolors.OKBLUE + "Estoy en left status" + bcolors.ENDC
+    if bbo.arrange_status:
+        print bcolors.OKBLUE + "Estoy en left status desde arrange" + bcolors.ENDC
+    elif bbo.environment_status:
+        print bcolors.OKBLUE + "Estoy en left status desde environment" + bcolors.ENDC
+        
     laser_scan()
+    
+    #pdb.set_trace()
+    
     rospy.sleep(2)
-    if black_board_object.move_count == 0:
+    if bbo.move_count == 0:
         return 1
+    
     r = list()
-    r = black_board_object.kinect_scan
+    r = bbo.kinect_scan
     #plotter(kinect_scan)
     filtered_scan, singularities = moving_window_filtro(r[438:639], tolerance=0.1, n_neighbors=1)
-    if len(singularities) != 0: 
-        print bcolors.OKBLUE + "Left singularities: " + repr(singularities) + bcolors.ENDC
+        
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
-
+    tracks = list()
     r1 = r[438:508]
     r2 = r[508:574]
     r3 = r[574:639]
-    if len(singularities) != 0: 
-        print bcolors.OKBLUE + "Left singularities: " + repr(singularities) + bcolors.ENDC
-        r1 = r[438:singularities[0]]
-        if len(singularities) > 1:
-            r2 = r[singularities[0]:singularities[1]]
-        if len(singularities) > 2:
-            r3 = r[singularities[1]:singularities[2]]
-            
-    line = ExtractedLine()
-    if min(r3) < black_board_object.maximum_range:
-        print bcolors.OKGREEN + "Left3 sensing" + bcolors.ENDC
-        
-        line = extract_lines(r3, status = 'L')
-        
-        print "odom_angle: ",  black_board_object.agent_rotation_angle
-        print "wall_angle: ", black_board_object.left_wall_angle
-        print "distance to left wall(coefficients[1]): ", black_board_object.distance_to_left_wall
-        print bcolors.OKBLUE + "distance to front obstacle: " +  str(black_board_object.distance_front) + bcolors.ENDC
-        black_board_object.Left3 = True
-        
-        if black_board_object.Left3:
-            black_board_object.adv_distance = black_board_object.distance_front - 1.7
-        else:
-            black_board_object.adv_distance = 0.0
-    else:
-        print bcolors.OKBLUE + "Nothing on the left3" + bcolors.ENDC
-        black_board_object.Left3 = False
+    tracks.append(r1)
+    tracks.append(r2)
+    tracks.append(r3)
     
-#        raw_input("Press a key to continue...")
-
-    av_distance2 = sum(r2)/65.
-    if av_distance2 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Left2 sensing" + bcolors.ENDC
-        if black_board_object.Left1 == False:
-            line = extract_lines(r2, status = 'L')
+    if len(singularities) != 0:
+        for i in range(len(singularities)):
+            singularities[i] = singularities[i] + 438 + 1
+        singularities.insert(0, 438)
+        singularities.append(639)
+        print bcolors.OKBLUE + "Left singularities: " + repr(singularities) + bcolors.ENDC
+        tracks = []
+        for i in range(len(singularities)-1):
+            tracks.append(r[singularities[i]:singularities[i+1]])
+        print tracks
+        
+    line = ExtractedLine()
+    count = 1
+    for t in tracks:
+        if min(t) < bbo.maximum_range:
+            print bcolors.OKGREEN + "Left" + str(count) + " sensing" + bcolors.ENDC
+            
+            line = extract_lines(t, status = 'L')
             line_storage(line)
-        
-        black_board_object.Left2 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the left2" + bcolors.ENDC
-        black_board_object.Left2 = False
-        
-    av_distance3 = sum(r1)/70.
-    if av_distance3 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Left1 sensing" + bcolors.ENDC
-        if black_board_object.Left2 == False and black_board_object.Left3 == False:
-            line = extract_lines(r1, status = 'L')
-            line_storage(line)
-        
-        black_board_object.Left1 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the left1" + bcolors.ENDC
-        black_board_object.Left1 = False
+            
+            count += 1
+            print "odom_angle: ",  bbo.agent_rotation_angle
+            print "wall_angle: ", bbo.left_wall_angle
+            print "distance to left wall(coefficients[1]): ", bbo.distance_to_left_wall
+            print bcolors.OKBLUE + "distance to front obstacle: " +  str(bbo.distance_front) + bcolors.ENDC
+            bbo.Left.append(True)
+            
+            if bbo.Left.pop() == True:
+                bbo.adv_distance = bbo.distance_front - 1.7
+            else:
+                bbo.adv_distance = 0.0
+        else:
+            print bcolors.OKBLUE + "Nothing on the left" + str(count) + bcolors.ENDC
+            bbo.Left.append(False)
+            count += 1
+    
+    n = len(bbo.Left)
+    if n == 1:
+        bbo.Left1 = bbo.Left[0]
+    elif n == 2:
+        bbo.Left1 = bbo.Left[0]
+        bbo.Left2 = bbo.Left[1]
+    elif n == 3:
+        bbo.Left1 = bbo.Left[0]
+        bbo.Left2 = bbo.Left[1]
+        bbo.Left3 = bbo.Left[2]
+    
+    #        raw_input("Press a key to continue...")
         
     if line is not None:
         line_display()
@@ -670,80 +686,81 @@ def left_status():
 
 def front_status():
     #pdb.set_trace()
-    print bcolors.OKBLUE + "Estoy en front status" + bcolors.ENDC
+    if bbo.arrange_status:
+        print bcolors.OKBLUE + "Estoy en front status desde arrange" + bcolors.ENDC
+    elif bbo.environment_status:
+        print bcolors.OKBLUE + "Estoy en front status desde environment" + bcolors.ENDC
+    
     laser_scan()
+    
+    #pdb.set_trace()
+    
     rospy.sleep(2)
-    if black_board_object.move_count == 0:
+    if bbo.move_count == 0:
         return 1
     
     r = list()
-    r = black_board_object.kinect_scan
+    r = bbo.kinect_scan
 
-    black_board_object.lines.header.stamp = rospy.Time.now()
+    bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[200:438], "Front")
     
     filtered_scan, singularities = moving_window_filtro(r[200:438], tolerance=0.1, n_neighbors=1)
-    if len(singularities) != 0: 
-        print bcolors.OKBLUE + "Front singularities: " + repr(singularities) + bcolors.ENDC
-#        if len(singularities) != 0:
-#            plotter(filtered_scan, "Right-filtered")
+    
+    tracks = list()
     r1 = r[200:270]
     r2 = r[270:370]
     r3 = r[370:438]
-    if len(singularities) != 0: 
+    tracks.append(r1)
+    tracks.append(r2)
+    tracks.append(r3)
+    
+    if len(singularities) != 0:
+        for i in range(len(singularities)):
+            singularities[i] = singularities[i] + 200 + 1
+        singularities.insert(0, 200)
+        singularities.append(438)
         print bcolors.OKBLUE + "Front singularities: " + repr(singularities) + bcolors.ENDC
-        r1 = r[200:singularities[0]]
-        if len(singularities) > 1:
-            r2 = r[singularities[0]:singularities[1]]
-        if len(singularities) > 2:
-            r3 = r[singularities[1]:singularities[2]]
+        tracks = []
+        for i in range(len(singularities)-1):
+            tracks.append(r[singularities[i]:singularities[i+1]])
+        print tracks
+
     line = ExtractedLine()
-    if min(r2) < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Front2 sensing" + bcolors.ENDC
-        
-        line = extract_lines(r2, status = 'F')
-        line_storage(line)
-
-        print "odom_angle: ", black_board_object.agent_rotation_angle
-        print "wall_angle: ", black_board_object.front_wall_angle
-        print bcolors.OKBLUE + "distance to front wall(rho): " +  str(black_board_object.distance_to_front_wall) + bcolors.ENDC
-        print bcolors.OKBLUE + "distance to front obstacle: " +  str(black_board_object.distance_front) + bcolors.ENDC
-        black_board_object.Front2 = True
-        black_board_object.adv_distance = black_board_object.distance_front - 1.7
-    else:
-        print bcolors.OKBLUE + "Nothing on the front2" + bcolors.ENDC
-        black_board_object.adv_distance = 0.0
-        black_board_object.Front2 = False
-        #Right_Corner = False
-
-    #raw_input("Press ENTER to continue...")
-              
-    #pdb.set_trace()
-    av_distance1 = sum(r1)/69.
-    if av_distance1 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Front1 sensing" + bcolors.ENDC
-        if black_board_object.Front2 == False:
-            line = extract_lines(r1, status = 'F')
+    count = 1
+    for t in tracks:
+        if min(t) < bbo.maximum_range:
+            print bcolors.OKBLUE + "Front" + str(count) + " sensing" + bcolors.ENDC
+            
+            line = extract_lines(t, status = 'F')
             line_storage(line)
-        
-        black_board_object.Front1 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the front1" + bcolors.ENDC
-        black_board_object.Front1 = False
-    #raw_input("Press ENTER to continue...")  
     
-    av_distance3 = sum(r3)/67.
-    if av_distance3 < black_board_object.maximum_range:
-        print bcolors.OKBLUE + "Front3 sensing" + bcolors.ENDC
-        if black_board_object.Front1 == False and black_board_object.Front2 == False:
-            line = extract_lines(r3, status = 'F')
-            line_storage(line)
-        
-        black_board_object.Front3 = True
-    else:
-        print bcolors.OKBLUE + "Nothing on the front3" + bcolors.ENDC
-        black_board_object.Front3 = False
+            count += 1
+            print "odom_angle: ", bbo.agent_rotation_angle
+            print "wall_angle: ", bbo.front_wall_angle
+            print bcolors.OKBLUE + "distance to front wall(rho): " +  str(bbo.distance_to_front_wall) + bcolors.ENDC
+            print bcolors.OKBLUE + "distance to front obstacle: " +  str(bbo.distance_front) + bcolors.ENDC
+            bbo.Front.append(True)
+            bbo.adv_distance = bbo.distance_front - 1.7
+        else:
+            print bcolors.OKBLUE + "Nothing on the front" + str(count) + bcolors.ENDC
+            bbo.adv_distance = bbo.distance_front - 1.7
+            bbo.Front.append(False)
+            count += 1
+            #Right_Corner = False
     
+        #raw_input("Press ENTER to continue...")
+    n = len(bbo.Front)
+    if n == 1:
+        bbo.Front1 = bbo.Front[0]
+    elif n == 2:
+        bbo.Front1 = bbo.Front[0]
+        bbo.Front2 = bbo.Front[1]
+    elif n == 3:
+        bbo.Front1 = bbo.Front[0]
+        bbo.Front2 = bbo.Front[1]
+        bbo.Front3 = bbo.Front[2]
+        
     if line is not None:
         line_display()
         

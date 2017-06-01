@@ -43,15 +43,20 @@ class BlackBoard:
         self.left_wall_angle = 0.0
         self.front_wall_angle = 0.0
         self.distance_to_front_wall = 7.0
+        self.Left = list()
         self.Left1 = False
         self.Left2 = False
         self.Left3 = False
+        self.Right = list()
         self.Right1 = False
         self.Right2 = False
         self.Right3 = False
-        self.Front2 = False
+        self.Front = list()
         self.Front1 = False
+        self.Front2 = False
         self.Front3 = False
+        self.environment_status = False
+        self.arrange_status = False
         # The agent's current position on the map
         self.agent_position = Point()
         self.agent_rotation = Quaternion()
@@ -95,5 +100,5 @@ class BlackBoard:
 
         
 # Initialize the blackboard
-black_board_object = BlackBoard()
+bbo = BlackBoard()
    

@@ -17,7 +17,7 @@ from std_msgs.msg import ColorRGBA
 from adaptor001.msg import ExtractedLine
 from adaptor001.msg import ExtractedLines
 
-from black_board_class import BlackBoard, black_board_object
+from black_board_class import BlackBoard, bbo
 
 def create_lines_marker(lines):
     marker = Marker()
@@ -62,7 +62,7 @@ def create_lines_marker(lines):
             
     #print "Marker", marker
 
-    black_board_object.lines_publisher.publish(marker)
+    bbo.lines_publisher.publish(marker)
     rospy.sleep(5)
     #raw_input("Press ENTER to continue...")
 
@@ -111,7 +111,7 @@ def create_scanpoints_marker(lines):
     
     #print "Marker", marker
     
-    black_board_object.scanpoints_publisher.publish(marker)
+    bbo.scanpoints_publisher.publish(marker)
     rospy.sleep(5)
     #raw_input("Press ENTER to continue...")
 
