@@ -84,10 +84,10 @@ def get_close():
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
     line = None
     lines = bbo.lines
-    smallestR = float('inf')
+    smallest_r = float('inf')
     for l in lines.lines:
-        if l.r < smallestR:
-            smallestR = l.r
+        if l.r < smallest_r:
+            smallest_r = l.r
             line = l
 
     print bcolors.OKBLUE + "Closest line: " + bcolors.ENDC
@@ -149,7 +149,7 @@ def get_close():
         rospy.sleep(2)
         bbo.agent_rotation_angle = arrange()
         
-def fit_line(scan, start_index, end_index, maximum_range, status):
+def fit_line(scan, start_index, end_index, maximum_range, first_index):
     """ 
     Fit a line to the given LaserScan yielding an ExtractedLine.
     
@@ -173,18 +173,13 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
     """
     # First we must calculate alpha, using the formula presented in the
     # course notes (due to Arras, 1998).
-    sumWeights = 0
-    sumNumL = 0 # The summation term in the numerator on the left
-    sumNumR = 0 # The summation term in the numerator on the right
-    sumDenL = 0 # The summation term in the denominator on the left
-    sumDenR = 0 # The summation term in the denominator on the right
+    sum_weights = 0
+    sum_num_L = 0 # The summation term in the numerator on the left
+    sum_num_R = 0 # The summation term in the numerator on the right
+    sum_den_L = 0 # The summation term in the denominator on the left
+    sum_den_R = 0 # The summation term in the denominator on the right
     
-    if status == "R":
-        angle_min = bbo.angle_min
-    if status == "L":
-        angle_min = bbo.angle_min + 574 * bbo.angle_increment
-    if status == "F":
-        angle_min = bbo.angle_min + 270 * bbo.angle_increment
+    angle_min = bbo.angle_min + first_index * bbo.angle_increment
         
     for i in range(start_index, end_index+1):
         rho = scan[i]
@@ -194,11 +189,11 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
         weight = 1 / rho**2
         #weight = 1
 
-        sumWeights += weight
+        sum_weights += weight
 
         factor1 = weight * rho * rho
-        sumNumL += factor1 * math.sin(2 * theta)
-        sumDenL += factor1 * math.cos(2 * theta)
+        sum_num_L += factor1 * math.sin(2 * theta)
+        sum_den_L += factor1 * math.cos(2 * theta)
         
         for j in range(start_index, end_index+1):
             rho_j = scan[j]
@@ -209,19 +204,19 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
             #weight_j = 1
 
             factor2 = weight * weight_j * rho * rho_j
-            sumNumR += factor2 * math.cos(theta) * math.sin(theta_j)
-            sumDenR += factor2 * math.cos(theta + theta_j)
+            sum_num_R += factor2 * math.cos(theta) * math.sin(theta_j)
+            sum_den_R += factor2 * math.cos(theta + theta_j)
 
-    if sumWeights == 0:
+    if sum_weights == 0:
         # There are either no scan points at all, or none within range.
         return None
 
-    sumNumR *= 2.0 / sumWeights
-    sumDenR /= sumWeights
-    alpha = math.atan2(sumNumL - sumNumR, sumDenL - sumDenR) / 2.0 + math.pi/2
+    sum_num_R *= 2.0 / sum_weights
+    sum_den_R /= sum_weights
+    alpha = math.atan2(sum_num_L - sum_num_R, sum_den_L - sum_den_R) / 2.0 + math.pi/2
     
     # We now calculate r.
-    sumNum = 0 # The summation term in the numerator
+    sum_num = 0 # The summation term in the numerator
     for i in range(start_index, end_index+1):
         rho = scan[i]
         if rho == 0 or rho > maximum_range:
@@ -230,9 +225,9 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
         weight = 1 / rho**2
         #weight = 1
 
-        sumNum += weight * rho * math.cos(theta - alpha)
+        sum_num += weight * rho * math.cos(theta - alpha)
 
-    r = sumNum / sumWeights
+    r = sum_num / sum_weights
     
 #    print "scan: ", scan
 #    print "r: ", r
@@ -247,25 +242,25 @@ def fit_line(scan, start_index, end_index, maximum_range, status):
     # Determine the first and last points used to estimate this line's
     # parameters.  These two points do not define the line, but they are useful
     # for visualization to show the range of points involved.
-    firstScanPoint = Point32()
-    lastScanPoint = Point32()
+    first_scan_point = Point32()
+    last_scan_point = Point32()
     dist = scan[start_index]
     angle = angle_min + start_index * bbo.angle_increment
     if dist <= maximum_range:
-        firstScanPoint.x = dist * math.cos(angle)
-        firstScanPoint.y = dist * math.sin(angle)
+        first_scan_point.x = dist * math.cos(angle)
+        first_scan_point.y = dist * math.sin(angle)
     dist = scan[end_index]
     angle = angle_min + end_index * bbo.angle_increment
     if dist <= maximum_range:
-        lastScanPoint.x = dist * math.cos(angle)
-        lastScanPoint.y = dist * math.sin(angle)
+        last_scan_point.x = dist * math.cos(angle)
+        last_scan_point.y = dist * math.sin(angle)
 
-    return ExtractedLine(-r, alpha, firstScanPoint, lastScanPoint)
+    return ExtractedLine(-r, alpha, first_scan_point, last_scan_point)
 
-def right_wall_param(r, start_index, end_index, maximum_range, status):
+def right_wall_param(r, start_index, end_index, maximum_range, first_index):
     #pdb.set_trace()
     line = ExtractedLine()
-    line = fit_line(r, start_index, end_index, maximum_range, status)
+    line = fit_line(r, start_index, end_index, maximum_range, first_index)
     if line is not None:
         # approximate wall_angle (degrees)
         bbo.right_wall_angle = normalize_angle(line.alpha)*180./math.pi
@@ -275,9 +270,9 @@ def right_wall_param(r, start_index, end_index, maximum_range, status):
 
     return line
     
-def left_wall_param(r, start_index, end_index, maximum_range, status):
+def left_wall_param(r, start_index, end_index, maximum_range, first_index):
     line = ExtractedLine()
-    line = fit_line(r, start_index, end_index, maximum_range, status)
+    line = fit_line(r, start_index, end_index, maximum_range, first_index)
     if line is not None:
         # approximate wall_angle (degrees)
         bbo.left_wall_angle = normalize_angle(line.alpha)*180./math.pi
@@ -287,10 +282,10 @@ def left_wall_param(r, start_index, end_index, maximum_range, status):
 
     return line
 
-def front_wall_param(r, start_index, end_index, maximum_range, status):
+def front_wall_param(r, start_index, end_index, maximum_range, first_index):
     #pdb.set_trace()
     line = ExtractedLine()
-    line = fit_line(r, start_index, end_index, maximum_range, status)
+    line = fit_line(r, start_index, end_index, maximum_range, first_index)
     if line is not None:
         # approximate wall_angle (degrees)
         bbo.front_wall_angle = normalize_angle(line.alpha)*180./math.pi
@@ -300,7 +295,7 @@ def front_wall_param(r, start_index, end_index, maximum_range, status):
 
     return line
 
-def extract_lines(r, status = 'R'):
+def extract_lines(r, status, first_index):
     """
     Extracts lines from the given LaserScan and publishes to /extracted_lines.
     Publish these lines as an ExtractedLines object on the /extracted_lines
@@ -328,19 +323,19 @@ def extract_lines(r, status = 'R'):
 #    raw_input('Enter to continue')
     #pdb.set_trace()
     if status == 'R':
-        line = right_wall_param(r, start_index, end_index, bbo.maximum_range, status)
+        line = right_wall_param(r, start_index, end_index, bbo.maximum_range, first_index)
         if line is None:
             return line
 #        if line.r > bbo.distance_to_right_wall:
 #            line = None
     elif status == 'L':
-        line = left_wall_param(r, start_index, end_index, bbo.maximum_range, status)
+        line = left_wall_param(r, start_index, end_index, bbo.maximum_range, first_index)
         if line is None:
             return line
         if line.r > bbo.distance_to_left_wall:
             line = None
     elif status == 'F':
-        line = front_wall_param(r, start_index, end_index, bbo.maximum_range, status)
+        line = front_wall_param(r, start_index, end_index, bbo.maximum_range, first_index)
         if line is None:
             return line
         if line.r > bbo.distance_to_front_wall:
@@ -446,7 +441,7 @@ def arrange():
     front_status()
     # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
-    #pdb.set_trace()
+    pdb.set_trace()
     angle_rad_rot = math.radians(agent_rotation_angle)
     if abs(agent_rotation_angle) < 45:
         turn = -angle_rad_rot
@@ -464,7 +459,7 @@ def arrange():
         turn = sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
-    if bbo.Right1 == False and bbo.Right2 == False and bbo.Right3 == False and bbo.move_count > 1:
+    if bbo.Right1 == False and bbo.Right2 == False and bbo.Right3 == False and bbo.move_count > 0:
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -math.pi/2, da=True)
         
     if bbo.Right2 == True and bbo.driving_forward == False:
@@ -541,19 +536,18 @@ def right_status():
     filtered_scan, singularities = moving_window_filtro(r[0:200], tolerance=0.1, n_neighbors=1)
     
     tracks = list()
-    r1 = r[0:65]
-    r2 = r[65:130]
-    r3 = r[130:200]
+    r1 = r[0:200]
     tracks.append(r1)
-    tracks.append(r2)
-    tracks.append(r3)
+    index = list()
+    index.append(0)
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
-            singularities[i] = singularities[i] + 1
+            singularities[i] = singularities[i] + 1 # add 1 to make the track uniform
         singularities.insert(0, 0)
         singularities.append(200)
         print bcolors.OKBLUE + "Right singularities: " + repr(singularities) + bcolors.ENDC
+        bbo.right_singularities = singularities
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
@@ -562,14 +556,21 @@ def right_status():
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
     line = ExtractedLine()
-    count = 1
+    track_count = 1
+    index_count = 0
     for t in tracks:
         if min(t) < bbo.maximum_range:
-            print bcolors.OKBLUE + "Right" + str(count) + " sensing" + bcolors.ENDC
-            line = extract_lines(t, status = 'R')
+            print bcolors.OKBLUE + "Right" + str(track_count) + " sensing" + bcolors.ENDC
+            if len(singularities) != 0:
+                first_index = singularities[index_count]
+                line = extract_lines(t, 'R', first_index)
+                index_count += 1
+            else:
+                first_index = index[0]
+                line = extract_lines(t, 'R', first_index)
             line_storage(line)
             
-            count += 1
+            track_count += 1
             print bcolors.OKBLUE + "odom_angle: " +  str(bbo.agent_rotation_angle) + bcolors.ENDC
             print bcolors.OKBLUE + "wall_angle: " +  str(bbo.right_wall_angle) + bcolors.ENDC
             print bcolors.OKBLUE + "distance to right wall(rho): " +  str(bbo.distance_to_right_wall) + bcolors.ENDC
@@ -579,10 +580,10 @@ def right_status():
             if line is not None:
                 line_display()
         else:
-            print bcolors.OKBLUE + "Nothing on the right" + str(count) + bcolors.ENDC
+            print bcolors.OKBLUE + "Nothing on the right" + str(track_count) + bcolors.ENDC
             bbo.adv_distance = 0.0
             bbo.Right.append(False)
-            count += 1
+            track_count += 1
             
     n = len(bbo.Right)
     if n == 1:
@@ -623,34 +624,39 @@ def left_status():
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
     tracks = list()
-    r1 = r[438:508]
-    r2 = r[508:574]
-    r3 = r[574:639]
+    r1 = r[438:639]
     tracks.append(r1)
-    tracks.append(r2)
-    tracks.append(r3)
+    index = list()
+    index.append(0)
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
-            singularities[i] = singularities[i] + 438 + 1
+            singularities[i] = singularities[i] + 438 + 1 # add 1 to make the track uniform
         singularities.insert(0, 438)
         singularities.append(639)
         print bcolors.OKBLUE + "Left singularities: " + repr(singularities) + bcolors.ENDC
+        bbo.left_singularities = singularities
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
         print tracks
         
     line = ExtractedLine()
-    count = 1
+    track_count = 1
+    index_count = 0
     for t in tracks:
         if min(t) < bbo.maximum_range:
-            print bcolors.OKGREEN + "Left" + str(count) + " sensing" + bcolors.ENDC
-            
-            line = extract_lines(t, status = 'L')
+            print bcolors.OKGREEN + "Left" + str(track_count) + " sensing" + bcolors.ENDC
+            if len(singularities) != 0:
+                first_index = singularities[index_count]
+                line = extract_lines(t, 'L', first_index)
+                index_count += 1
+            else:
+                first_index = index[0]
+                line = extract_lines(t, 'L', first_index)
             line_storage(line)
             
-            count += 1
+            track_count += 1
             print "odom_angle: ",  bbo.agent_rotation_angle
             print "wall_angle: ", bbo.left_wall_angle
             print "distance to left wall(coefficients[1]): ", bbo.distance_to_left_wall
@@ -662,9 +668,9 @@ def left_status():
             else:
                 bbo.adv_distance = 0.0
         else:
-            print bcolors.OKBLUE + "Nothing on the left" + str(count) + bcolors.ENDC
+            print bcolors.OKBLUE + "Nothing on the left" + str(track_count) + bcolors.ENDC
             bbo.Left.append(False)
-            count += 1
+            track_count += 1
     
     n = len(bbo.Left)
     if n == 1:
@@ -708,34 +714,40 @@ def front_status():
     filtered_scan, singularities = moving_window_filtro(r[200:438], tolerance=0.1, n_neighbors=1)
     
     tracks = list()
-    r1 = r[200:270]
-    r2 = r[270:370]
-    r3 = r[370:438]
+    r1 = r[200:438]
     tracks.append(r1)
-    tracks.append(r2)
-    tracks.append(r3)
+    index = list()
+    index.append(0)
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
-            singularities[i] = singularities[i] + 200 + 1
+            singularities[i] = singularities[i] + 200 + 1 # add 1 to make the track uniform
         singularities.insert(0, 200)
         singularities.append(438)
         print bcolors.OKBLUE + "Front singularities: " + repr(singularities) + bcolors.ENDC
+        bbo.front_singularities = singularities
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
         print tracks
 
     line = ExtractedLine()
-    count = 1
+    track_count = 1
+    index_count = 0
     for t in tracks:
         if min(t) < bbo.maximum_range:
-            print bcolors.OKBLUE + "Front" + str(count) + " sensing" + bcolors.ENDC
-            
-            line = extract_lines(t, status = 'F')
+            print bcolors.OKBLUE + "Front" + str(track_count) + " sensing" + bcolors.ENDC
+            if len(singularities) != 0:
+                first_index = singularities[index_count]
+                line = extract_lines(t, 'F', first_index)
+                index_count += 1
+            else:
+                first_index = index[0]
+                line = extract_lines(t, 'F', first_index)
+
             line_storage(line)
     
-            count += 1
+            track_count += 1
             print "odom_angle: ", bbo.agent_rotation_angle
             print "wall_angle: ", bbo.front_wall_angle
             print bcolors.OKBLUE + "distance to front wall(rho): " +  str(bbo.distance_to_front_wall) + bcolors.ENDC
@@ -743,10 +755,10 @@ def front_status():
             bbo.Front.append(True)
             bbo.adv_distance = bbo.distance_front - 1.7
         else:
-            print bcolors.OKBLUE + "Nothing on the front" + str(count) + bcolors.ENDC
+            print bcolors.OKBLUE + "Nothing on the front" + str(track_count) + bcolors.ENDC
             bbo.adv_distance = bbo.distance_front - 1.7
             bbo.Front.append(False)
-            count += 1
+            track_count += 1
             #Right_Corner = False
     
         #raw_input("Press ENTER to continue...")
