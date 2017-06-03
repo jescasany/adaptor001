@@ -29,6 +29,7 @@ class Environment:
         bb.laser_scan()
         bb.right_status()
         bb.front_status()
+        bb.left_status()
         if experiment.get_label() == 'e1':
             if bbo.Right1:
                 bbo.adv_distance = bbo.distance_front - 1.7
@@ -123,6 +124,7 @@ class ConstructiveEnvironment:
         bb.laser_scan()
         bb.right_status()
         bb.front_status()
+        bb.left_status()
         if experiment == 'e1':
             if bbo.Right1:
                 bbo.adv_distance = bbo.distance_front - 1.7

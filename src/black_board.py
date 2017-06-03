@@ -55,8 +55,41 @@ def display_callback(lines_msg):
     rospy.sleep(2)
     display_lines.create_scanpoints_marker(lines_msg)
     rospy.sleep(2)
-
+    
 def get_close():
+    print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
+    if len(bbo.right_singularities) == 0:
+        get_close_line()
+    elif len(bbo.right_singularities) == 3:
+        corner_index = bbo.right_singularities[1]
+        corner_distance = bbo.right_distances[1]
+        angle = bbo.angle_min + corner_index * bbo.angle_increment
+        dist = corner_distance * math.cos(angle)
+        
+    bbo.adv_distance = dist + 2.0
+    bbo.adv_angle = -math.pi/2
+    
+    print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
+    print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
+
+    # Publish the twist message produced by the controller.
+    print bcolors.OKBLUE + "STOP the agent before wall following" + bcolors.ENDC
+    bbo.cmd_vel_publisher.publish(Twist())
+    rospy.sleep(2)
+    #pdb.set_trace()
+    #raw_input("Press ENTER to continue...")
+    laser_scan()
+    if bbo.driving_forward:
+        print "Moving due to singularity"
+        (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=False)
+    else:
+        print "Just turning due to singularity"
+        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False)
+       
+    rospy.sleep(2)
+    bbo.agent_rotation_angle = arrange()
+
+def get_close_line():
     """
     The position of the goal in the robot reference frame is specified by
     the values goalx and goaly, the x and y coordinates of the goal in the
@@ -142,9 +175,11 @@ def get_close():
         #raw_input("Press ENTER to continue...")
         laser_scan()
         if bbo.driving_forward:
+            print "Moving to closest line"
             (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=False)
         else:
-           (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False) 
+            print "Just turning to closest line"
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False) 
             
         rospy.sleep(2)
         bbo.agent_rotation_angle = arrange()
@@ -183,10 +218,10 @@ def fit_line(scan, start_index, end_index, maximum_range, first_index):
         
     for i in range(start_index, end_index+1):
         rho = scan[i]
-        if rho == 0 or rho > maximum_range:
+        if rho == 0.0 or rho > maximum_range:
             continue
         theta = angle_min + i * bbo.angle_increment
-        weight = 1 / rho**2
+        weight = 1/rho**2
         #weight = 1
 
         sum_weights += weight
@@ -437,11 +472,20 @@ def clamp(self, val, minimum, maximum):
 def arrange():
     bbo.arrange_status = True
     laser_scan()
+    bbo.Right1 = False
+    bbo.Right2 = False
+    bbo.Right3 = False
     right_status()
+    
+    bbo.Front1 = False
+    bbo.Front2 = False
+    bbo.Front3 = False
     front_status()
+    
+    pdb.set_trace()
     # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
-    pdb.set_trace()
+    
     angle_rad_rot = math.radians(agent_rotation_angle)
     if abs(agent_rotation_angle) < 45:
         turn = -angle_rad_rot
@@ -460,9 +504,11 @@ def arrange():
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
     if bbo.Right1 == False and bbo.Right2 == False and bbo.Right3 == False and bbo.move_count > 0:
+        print "Turning to the right since nothing on the RIGHT"
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -math.pi/2, da=True)
         
     if bbo.Right2 == True and bbo.driving_forward == False:
+        print "Turning to the left since RIGHT and FRONT are busy"
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, math.pi/2, da=True)
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
     bbo.arrange_status = False
@@ -523,10 +569,11 @@ def right_status():
         print bcolors.OKBLUE + "Estoy en right status desde environment" + bcolors.ENDC
     laser_scan()
     
-    pdb.set_trace()
+    #pdb.set_trace()
     
     rospy.sleep(2)
     if bbo.move_count == 0:
+        print "Move count = 0"
         return 1
     r = list()
     r = bbo.kinect_scan
@@ -551,8 +598,9 @@ def right_status():
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
-        print tracks
-        
+            bbo.right_distances.append(r[singularities[i]])
+        print "Right tracks: ", tracks
+    pdb.set_trace()    
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
     line = ExtractedLine()
@@ -614,6 +662,7 @@ def left_status():
     
     rospy.sleep(2)
     if bbo.move_count == 0:
+        print "Move count = 0"
         return 1
     
     r = list()
@@ -639,7 +688,7 @@ def left_status():
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
-        print tracks
+        print "Left tracks: ", tracks
         
     line = ExtractedLine()
     track_count = 1
@@ -703,6 +752,7 @@ def front_status():
     
     rospy.sleep(2)
     if bbo.move_count == 0:
+        print "Move count = 0"
         return 1
     
     r = list()
@@ -729,7 +779,7 @@ def front_status():
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
-        print tracks
+        print "Front tracks: ", tracks
 
     line = ExtractedLine()
     track_count = 1
