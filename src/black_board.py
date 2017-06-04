@@ -49,7 +49,7 @@ def display_callback(lines_msg):
     Callback for extracted lines, displayed by publishing to
     vis_lines_topic and vis_scanpoints_topic.
     """
-    print bcolors.OKBLUE + "Estoy en DISPLAY" + bcolors.ENDC
+    print bcolors.OKYELLOW + "Estoy en DISPLAY" + bcolors.ENDC
     rospy.sleep(2)
     display_lines.create_lines_marker(lines_msg)
     rospy.sleep(2)
@@ -81,7 +81,7 @@ def get_close():
     laser_scan()
     if bbo.driving_forward:
         print "Moving due to singularity"
-        (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=False)
+        (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=True)
     else:
         print "Just turning due to singularity"
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False)
@@ -475,14 +475,13 @@ def arrange():
     bbo.Right1 = False
     bbo.Right2 = False
     bbo.Right3 = False
+    bbo.Right = []
     right_status()
     
-    bbo.Front1 = False
-    bbo.Front2 = False
-    bbo.Front3 = False
-    front_status()
+    print "bbo.Right: ", bbo.Right
     
     pdb.set_trace()
+    
     # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
     
@@ -503,11 +502,12 @@ def arrange():
         turn = sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
-    if bbo.Right1 == False and bbo.Right2 == False and bbo.Right3 == False and bbo.move_count > 0:
+    if True not in bbo.Right and bbo.move_count > 0:
         print "Turning to the right since nothing on the RIGHT"
+        print bbo.Right
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -math.pi/2, da=True)
         
-    if bbo.Right2 == True and bbo.driving_forward == False:
+    if True in bbo.Right and bbo.driving_forward == False:
         print "Turning to the left since RIGHT and FRONT are busy"
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, math.pi/2, da=True)
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
@@ -585,7 +585,7 @@ def right_status():
     tracks = list()
     r1 = r[0:200]
     tracks.append(r1)
-    index = list()
+    index = []
     index.append(0)
     
     if len(singularities) != 0:
@@ -606,6 +606,8 @@ def right_status():
     line = ExtractedLine()
     track_count = 1
     index_count = 0
+    bbo.Right = []
+    
     for t in tracks:
         if min(t) < bbo.maximum_range:
             print bcolors.OKBLUE + "Right" + str(track_count) + " sensing" + bcolors.ENDC
@@ -675,7 +677,7 @@ def left_status():
     tracks = list()
     r1 = r[438:639]
     tracks.append(r1)
-    index = list()
+    index = []
     index.append(0)
     
     if len(singularities) != 0:
@@ -693,6 +695,8 @@ def left_status():
     line = ExtractedLine()
     track_count = 1
     index_count = 0
+    bbo.Left = []
+    
     for t in tracks:
         if min(t) < bbo.maximum_range:
             print bcolors.OKGREEN + "Left" + str(track_count) + " sensing" + bcolors.ENDC
@@ -766,7 +770,7 @@ def front_status():
     tracks = list()
     r1 = r[200:438]
     tracks.append(r1)
-    index = list()
+    index = []
     index.append(0)
     
     if len(singularities) != 0:
@@ -784,6 +788,8 @@ def front_status():
     line = ExtractedLine()
     track_count = 1
     index_count = 0
+    bbo.Front = []
+    
     for t in tracks:
         if min(t) < bbo.maximum_range:
             print bcolors.OKBLUE + "Front" + str(track_count) + " sensing" + bcolors.ENDC

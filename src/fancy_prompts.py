@@ -11,6 +11,7 @@ class bcolors:
     HEADER = '\033[7;1;33m'
     OKBLUE = '\033[94m'
     OKRED = '\033[31;1m'
+    OKYELLOW = '\033[33;1m'
     OKGREEN = '\033[1;92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
