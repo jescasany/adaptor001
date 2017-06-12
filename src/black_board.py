@@ -84,7 +84,9 @@ def singularities_selection():
         bbo.adv_angle = -math.pi/2
         
     elif len(bbo.right_singularities) == 3 and bbo.Right == [False, True]:
-        get_close_line()
+        bbo.adv_distance = 0.0
+        bbo.adv_angle = -math.pi/2
+        #get_close_line()
         
     elif len(bbo.right_singularities) == 0:
         get_close_line()
@@ -552,7 +554,7 @@ def right_status():
     bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[0:200], "Right")
     
-    filtered_scan, singularities = moving_window_filtro(r[0:200], tolerance=0.2, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[0:200], bbo.tolerance, n_neighbors=1)
     
     tracks = list()
     r1 = r[0:200]
@@ -644,7 +646,7 @@ def left_status():
     r = list()
     r = bbo.kinect_scan
     #plotter(kinect_scan)
-    filtered_scan, singularities = moving_window_filtro(r[438:639], tolerance=0.2, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[438:639], bbo.tolerance, n_neighbors=1)
         
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
@@ -744,7 +746,7 @@ def front_status():
     bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[200:438], "Front")
     
-    filtered_scan, singularities = moving_window_filtro(r[200:438], tolerance=0.2, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[200:438], bbo.tolerance, n_neighbors=1)
     
     tracks = list()
     r1 = r[200:438]

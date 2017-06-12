@@ -28,6 +28,8 @@ class BlackBoard:
         # Initialize a number of variables for the blackboard
         self.kinect_scan = list()
         self.filtered_scan = list()
+        # Initialize tolerance for the filter
+        self.tolerance = 0.1
         # Initialize distance and angle to advance
         self.adv_distance = 1.0      # meters
         self.adv_angle = 0.0     # radians

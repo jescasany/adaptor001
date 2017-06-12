@@ -67,13 +67,13 @@ class EcaAgent04:
                                   "turn right fail": ("e3", "r18", -50),\
 #                                  "front free": ("e4", "r4", 1),\
 #                                  "front busy": ("e4", "r5", -2),\
-                                  "right1 sensing": ("e5", "r6", 20),\
-                                  "right2 sensing": ("e5", "r8", 10),\
-                                  "right3 sensing": ("e5", "r12", 10),\
+                                  "right sensing": ("e5", "r6", 20),\
+#                                  "right2 sensing": ("e5", "r8", 10),\
+#                                  "right3 sensing": ("e5", "r12", 10),\
                                   "nothing on right1": ("e5", "r14", -50),\
-                                  "left1 sensing": ("e6", "r7", 0),\
-                                  "left2 sensing": ("e6", "r9", 0),\
-                                  "left3 sensing": ("e6", "r11", 0),\
+                                  "left sensing": ("e6", "r7", 0),\
+#                                  "left2 sensing": ("e6", "r9", 0),\
+#                                  "left3 sensing": ("e6", "r11", 0),\
                                   "nothing on left1": ("e6", "r13", 0)
 }
         # initialize environments and existences
@@ -95,7 +95,7 @@ class EcaAgent04:
         IS_VISITED = CallbackTask("IS VISITED", self.is_visited)
         
         START_STEP = CallbackTask("START STEP", bbo.ex.step)
-        
+       
 #        # The move advance task (uses CallbackTask)
 #        MOVE_ADV = CallbackTask("move_adv", self.move_adv)
 #        
