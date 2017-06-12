@@ -26,73 +26,52 @@ class Environment:
         """
         bbo.environment_status = True
         result = None
-        bb.laser_scan()
-        bb.right_status()
-        bb.front_status()
-        bb.left_status()
         if experiment.get_label() == 'e1':
-            if bbo.Right1:
+            if True in bbo.Right:
                 bbo.adv_distance = bbo.distance_front - 1.7
             else:
                 bbo.adv_distance = 0.0
             bbo.adv_angle = 0.0
             bb.move_adv()
-            if not bbo.move_fail and bbo.Right1:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
+            if not bbo.move_fail and True in bbo.Right:
                 result = 'r1'  # moved forward following a wall on the right
-            elif not bbo.move_fail:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
+            elif not bbo.move_fail and not (True in bbo.Right):
                 result = 'r4'  # moving forward sensing no wall 
             else:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
                 result = 'r10' # move failed: if robot bumps 
         elif experiment.get_label() == 'e2':
             #pdb.set_trace()
             bbo.adv_distance = 0.0
             bbo.adv_angle = math.pi/2
             bb.move_adv()
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            result = 'r2'   # turn left
+            if not bbo.move_fail and True in bbo.Right:
+                result = 'r2'   # turn left sensing a wall on the right
+            elif not bbo.move_fail and not (True in bbo.Right):
+                result = 'r15'  #  turn left sensing no wall 
+            else:
+                result = 'r16' # turn left failed: if robot bumps 
         elif experiment.get_label() == 'e3':
             bbo.adv_distance = 0.0
             bbo.adv_angle = -math.pi/2
             bb.move_adv()
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            result = 'r3'   # turn right
+            if not bbo.move_fail and True in bbo.Right:
+                result = 'r3'   # turn right sensing a wall on the right
+            elif not bbo.move_fail and not (True in bbo.Right):
+                result = 'r17'  #  turn right sensing no wall 
+            else:
+                result = 'r18' # turn right failed: if robot bumps 
         elif experiment.get_label() == 'e4':
             if bbo.driving_forward:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
                 result = 'r4'  # front free: no wall
             else:
-                bb.laser_scan()
-                bb.right_status()
                 result = 'r5'  # front busy: wall in front
         elif experiment.get_label() == 'e5':
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            if bbo.Right1:
+            if True in bbo.Right:
                 result = 'r6'   # right sensing: wall on the right
             else:
                 result = 'r14'   # nothing on the right
         elif experiment.get_label() == 'e6':
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            bb.left_status()
-            if bbo.Left1:
+            if True in bbo.Left:
                 result = 'r7'   # left sensing: wall on the left
             else:
                 result = 'r13'   # nothing on the left
@@ -121,70 +100,51 @@ class ConstructiveEnvironment:
         bbo.environment_status = True
         experiment = intended_interaction.get_label()[:2]
         result = None
-        bb.laser_scan()
-        bb.right_status()
-        bb.front_status()
-        bb.left_status()
         if experiment == 'e1':
-            if bbo.Right1:
+            if True in bbo.Right:
                 bbo.adv_distance = bbo.distance_front - 1.7
             else:
                 bbo.adv_distance = 0.0
             bbo.adv_angle = 0.0
             bb.move_adv()
-            if not bbo.move_fail and bbo.Right1:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
+            if not bbo.move_fail and True in bbo.Right:
                 result = 'r1'   # moved forward following a wall on the right
             elif not bbo.move_fail:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
                 result = 'r4'  # moving forward sensing no wall    
             else:
-                bb.laser_scan()
-                bb.right_status()
-                bb.front_status()
                 result = 'r10' # move failed: if robot bumps
         elif experiment == 'e2':
             bbo.adv_distance = 0.0
             bbo.adv_angle = math.pi/2
             bb.move_adv()
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            result = 'r2'   # turn left
+            if not bbo.move_fail and True in bbo.Right:
+                result = 'r2'   # turn left sensing a wall on the right
+            elif not bbo.move_fail and not (True in bbo.Right):
+                result = 'r15'  #  turn left sensing no wall 
+            else:
+                result = 'r16' # turn left failed: if robot bumps
         elif experiment == 'e3':
             bbo.adv_distance = 0.0
             bbo.adv_angle = -math.pi/2
             bb.move_adv()
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            result = 'r3'   # turn right
+            if not bbo.move_fail and True in bbo.Right:
+                result = 'r3'   # turn right sensing a wall on the right
+            elif not bbo.move_fail and not (True in bbo.Right):
+                result = 'r17'  #  turn right sensing no wall 
+            else:
+                result = 'r18' # turn right failed: if robot bumps 
         elif experiment == 'e4':
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
             if bbo.driving_forward:
                 result = 'r4'  # front free: no wall
             else:
                 result = 'r5'  # front busy: wall in front
         elif experiment == 'e5':
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            if bbo.Right1:
+            if True in bbo.Right:
                 result = 'r6'   # right sensing: wall on the right
             else:
                 result = 'r14'   # nothing on the right
         elif experiment == 'e6':
-            bb.laser_scan()
-            bb.right_status()
-            bb.front_status()
-            bb.left_status()
-            if bbo.Left1:
+            if True in bbo.Left:
                 result = 'r7'   # left sensing: wall on the left
             else:
                 result = 'r13'   # nothing on the left

@@ -50,25 +50,48 @@ def display_callback(lines_msg):
     vis_lines_topic and vis_scanpoints_topic.
     """
     print bcolors.OKYELLOW + "Estoy en DISPLAY" + bcolors.ENDC
-    rospy.sleep(2)
     display_lines.create_lines_marker(lines_msg)
     rospy.sleep(2)
     display_lines.create_scanpoints_marker(lines_msg)
     rospy.sleep(2)
     
-def get_close():
-    print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
-    if len(bbo.right_singularities) == 0:
-        get_close_line()
-    elif len(bbo.right_singularities) == 3:
+def singularities_selection():
+    print 'bbo.right_singularities: ', bbo.right_singularities
+    print 'bbo.front_singularities: ', bbo.front_singularities
+    print 'bbo.left_singularities: ', bbo.left_singularities    
+    #pdb.set_trace()
+    if True not in bbo.Right and bbo.move_count > 0:
+        print "Turning to the right since nothing on the RIGHT"
+        bbo.adv_distance = 0.0
+        bbo.adv_angle = -math.pi/2
+        
+    elif True in bbo.Right and bbo.driving_forward == False:
+        print "Turning to the left since RIGHT and FRONT are busy"
+        bbo.adv_distance = 0.0
+        bbo.adv_angle = math.pi/2
+        
+    elif len(bbo.front_singularities) == 4:
+        dist = bbo.front_distances[1]
+        bbo.adv_distance = dist + 1.2
+        bbo.adv_angle = 0.0
+        
+    elif len(bbo.right_singularities) == 3 and bbo.Right == [True, False]:
         corner_index = bbo.right_singularities[1]
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.cos(angle)
+        bbo.adv_distance = dist + 1.2
+        bbo.adv_angle = -math.pi/2
         
-    bbo.adv_distance = dist + 2.0
-    bbo.adv_angle = -math.pi/2
+    elif len(bbo.right_singularities) == 3 and bbo.Right == [False, True]:
+        get_close_line()
+        
+    elif len(bbo.right_singularities) == 0:
+        get_close_line()
     
+def get_close():
+    print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
+    singularities_selection()
     print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
     print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
 
@@ -76,8 +99,6 @@ def get_close():
     print bcolors.OKBLUE + "STOP the agent before wall following" + bcolors.ENDC
     bbo.cmd_vel_publisher.publish(Twist())
     rospy.sleep(2)
-    #pdb.set_trace()
-    #raw_input("Press ENTER to continue...")
     laser_scan()
     if bbo.driving_forward:
         print "Moving due to singularity"
@@ -85,15 +106,15 @@ def get_close():
     else:
         print "Just turning due to singularity"
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False)
-       
-    rospy.sleep(2)
-    bbo.agent_rotation_angle = arrange()
+        rospy.sleep(2)
+            
+    #bbo.agent_rotation_angle = arrange()
 
 def get_close_line():
     """
     The position of the goal in the robot reference frame is specified by
-    the values goalx and goaly, the x and y coordinates of the goal in the
-    robot reference frame.  These are obtained by summing the following two
+    the values bbo.adv_distance and bbo.adv_angle in the
+    robot coordinate frame /base_link.  These are obtained by summing the following two
     vectors which the instructor will illustrate on the board.  Note that fo
     = follow-offset and fa = follow-advance):
     
@@ -127,16 +148,6 @@ def get_close_line():
     print line
     #raw_input("Press ENTER to continue...")
     """
-    If this closest line is in the right angular range, we will use it below
-    to generate a goal position.  Otherwise, we will ignore it and keep with
-    any previously set velocity.
-    """
-    #pdb.set_trace()
-    
-#    if line is not None:
-#        if abs(line.alpha) > math.pi/2:
-#            line = None
-    """
     Place the closest line into a new ExtractedLines message and publish it on
     topic 'selected_lines'.  This will allow us to see the line selected
     above in rviz.  Note that we create a new line and change the r back
@@ -164,25 +175,6 @@ def get_close_line():
         bbo.adv_angle = th
         if (dist - fo) > 0:
             bbo.adv_angle = -th
-        print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
-        print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
-    
-        # Publish the twist message produced by the controller.
-        print bcolors.OKBLUE + "STOP the agent before wall following" + bcolors.ENDC
-        bbo.cmd_vel_publisher.publish(Twist())
-        rospy.sleep(2)
-        #pdb.set_trace()
-        #raw_input("Press ENTER to continue...")
-        laser_scan()
-        if bbo.driving_forward:
-            print "Moving to closest line"
-            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, da=False)
-        else:
-            print "Just turning to closest line"
-            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, bbo.adv_angle, da=False) 
-            
-        rospy.sleep(2)
-        bbo.agent_rotation_angle = arrange()
         
 def fit_line(scan, start_index, end_index, maximum_range, first_index):
     """ 
@@ -389,7 +381,7 @@ def clear_lines():
 def line_storage(line):
     if line is not None and line not in bbo.lines.lines:
         bbo.lines.lines.append(line)
-        if len(bbo.lines.lines) > 2:
+        if len(bbo.lines.lines) > 1:
             bbo.lines.lines.pop(0)
 #    print len(bbo.lines.lines)
 #    print bcolors.OKGREEN + "LINES: " + bcolors.ENDC
@@ -403,7 +395,6 @@ def line_display():
 #    rospy.loginfo("Waiting for lines_topic...")
 #    rospy.wait_for_message('/extracted_lines', ExtractedLines)
     rospy.Subscriber('/extracted_lines', ExtractedLines, display_callback, queue_size=10)
-
     rospy.sleep(1)
         
 def laser_scan():
@@ -416,15 +407,14 @@ def laser_scan():
     if bbo.distance_front <= 1.7:
         bbo.driving_forward = False
     else:
-        if bbo.Right1:
+        if True in bbo.Right:
             bbo.adv_distance = bbo.distance_front - 1.7
-        elif bbo.Right2 or bbo.Right3:
-            bbo.adv_distance = 1.0
         else:
             bbo.adv_distance = 0.0
             
         bbo.driving_forward = True
     #rospy.loginfo("laser_scan done")
+    return 1
     
 def scan_callback(msg):
     bbo.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
@@ -471,16 +461,8 @@ def clamp(self, val, minimum, maximum):
     
 def arrange():
     bbo.arrange_status = True
-    laser_scan()
-    bbo.Right1 = False
-    bbo.Right2 = False
-    bbo.Right3 = False
-    bbo.Right = []
-    right_status()
     
-    print "bbo.Right: ", bbo.Right
-    
-    pdb.set_trace()
+    #pdb.set_trace()
     
     # makes the robot turn to adopt a rotation angle of 0, +-(pi/2) or pi 
     agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
@@ -502,17 +484,10 @@ def arrange():
         turn = sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
-    if True not in bbo.Right and bbo.move_count > 0:
-        print "Turning to the right since nothing on the RIGHT"
-        print bbo.Right
-        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -math.pi/2, da=True)
-        
-    if True in bbo.Right and bbo.driving_forward == False:
-        print "Turning to the left since RIGHT and FRONT are busy"
-        (bbo.agent_position, bbo.agent_rotation) = advance(0.0, math.pi/2, da=True)
-    agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
+    
+    bbo.agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
     bbo.arrange_status = False
-    return agent_rotation_angle
+    return 1
     
 def move_adv():
     print bcolors.OKBLUE + "Estoy en move advance" + bcolors.ENDC
@@ -527,17 +502,17 @@ def move_adv():
             bbo.waypoints.append((bbo.agent_position, bbo.agent_rotation))
             bbo.move_count += 1
             print bcolors.OKBLUE + "Preparation DONE" + bcolors.ENDC
-            bbo.agent_rotation_angle = arrange()
+            #bbo.agent_rotation_angle = arrange()
             return 1
         
         laser_scan()
         rospy.sleep(2)
         if bbo.driving_forward or bbo.adv_distance == 0.0:
             get_close()
-        laser_scan()
-        rospy.sleep(2)
-        if bbo.driving_forward or bbo.adv_distance == 0.0:    
-            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, 0.0, da=True)
+#        laser_scan()
+#        rospy.sleep(2)
+#        if bbo.driving_forward or bbo.adv_distance == 0.0:    
+#            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, 0.0, da=True)
             
             bbo.adv_angle = 0.0
             print_position()
@@ -556,11 +531,8 @@ def move_adv():
         print bcolors.OKBLUE + "move_adv FAILED" + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, 0.0, da=True)
         bbo.move_fail = True
-        bbo.agent_rotation_angle = arrange()
         return 1
-    bbo.agent_rotation_angle = arrange()
     return 1
-
 
 def right_status():
     if bbo.arrange_status:
@@ -568,10 +540,10 @@ def right_status():
     elif bbo.environment_status:
         print bcolors.OKBLUE + "Estoy en right status desde environment" + bcolors.ENDC
     laser_scan()
+    rospy.sleep(2)
     
     #pdb.set_trace()
     
-    rospy.sleep(2)
     if bbo.move_count == 0:
         print "Move count = 0"
         return 1
@@ -580,13 +552,15 @@ def right_status():
     bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[0:200], "Right")
     
-    filtered_scan, singularities = moving_window_filtro(r[0:200], tolerance=0.1, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[0:200], tolerance=0.2, n_neighbors=1)
     
     tracks = list()
     r1 = r[0:200]
     tracks.append(r1)
     index = []
     index.append(0)
+    bbo.right_singularities = []
+    bbo.right_distances = []
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
@@ -599,8 +573,8 @@ def right_status():
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
             bbo.right_distances.append(r[singularities[i]])
-        print "Right tracks: ", tracks
-    pdb.set_trace()    
+        #print "Right tracks: ", tracks
+    #pdb.set_trace()    
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
     line = ExtractedLine()
@@ -670,7 +644,7 @@ def left_status():
     r = list()
     r = bbo.kinect_scan
     #plotter(kinect_scan)
-    filtered_scan, singularities = moving_window_filtro(r[438:639], tolerance=0.1, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[438:639], tolerance=0.2, n_neighbors=1)
         
 #        if len(singularities) != 0:
 #            plotter(filtered_scan, "Right-filtered")
@@ -679,6 +653,8 @@ def left_status():
     tracks.append(r1)
     index = []
     index.append(0)
+    bbo.left_singularities = []
+    bbo.left_distances = []
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
@@ -690,8 +666,11 @@ def left_status():
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
-        print "Left tracks: ", tracks
+            bbo.left_distances.append(r[singularities[i]])
+        #print "Left tracks: ", tracks
         
+    #pdb.set_trace()
+    
     line = ExtractedLine()
     track_count = 1
     index_count = 0
@@ -699,7 +678,7 @@ def left_status():
     
     for t in tracks:
         if min(t) < bbo.maximum_range:
-            print bcolors.OKGREEN + "Left" + str(track_count) + " sensing" + bcolors.ENDC
+            print bcolors.OKBLUE + "Left" + str(track_count) + " sensing" + bcolors.ENDC
             if len(singularities) != 0:
                 first_index = singularities[index_count]
                 line = extract_lines(t, 'L', first_index)
@@ -710,9 +689,9 @@ def left_status():
             line_storage(line)
             
             track_count += 1
-            print "odom_angle: ",  bbo.agent_rotation_angle
-            print "wall_angle: ", bbo.left_wall_angle
-            print "distance to left wall(coefficients[1]): ", bbo.distance_to_left_wall
+            print bcolors.OKBLUE + "odom_angle: " +  str(bbo.agent_rotation_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "wall_angle: " +  str(bbo.left_wall_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "distance to left wall(rho): " +  str(bbo.distance_to_left_wall) + bcolors.ENDC
             print bcolors.OKBLUE + "distance to front obstacle: " +  str(bbo.distance_front) + bcolors.ENDC
             bbo.Left.append(True)
             
@@ -765,13 +744,15 @@ def front_status():
     bbo.lines.header.stamp = rospy.Time.now()
     #plotter(r[200:438], "Front")
     
-    filtered_scan, singularities = moving_window_filtro(r[200:438], tolerance=0.1, n_neighbors=1)
+    filtered_scan, singularities = moving_window_filtro(r[200:438], tolerance=0.2, n_neighbors=1)
     
     tracks = list()
     r1 = r[200:438]
     tracks.append(r1)
     index = []
     index.append(0)
+    bbo.front_singularities = []
+    bbo.front_distances = []
     
     if len(singularities) != 0:
         for i in range(len(singularities)):
@@ -783,8 +764,11 @@ def front_status():
         tracks = []
         for i in range(len(singularities)-1):
             tracks.append(r[singularities[i]:singularities[i+1]])
-        print "Front tracks: ", tracks
-
+            bbo.front_distances.append(r[singularities[i]])
+        #print "Front tracks: ", tracks
+        
+    #pdb.set_trace()
+    
     line = ExtractedLine()
     track_count = 1
     index_count = 0
@@ -804,9 +788,9 @@ def front_status():
             line_storage(line)
     
             track_count += 1
-            print "odom_angle: ", bbo.agent_rotation_angle
-            print "wall_angle: ", bbo.front_wall_angle
-            print bcolors.OKBLUE + "distance to front wall(rho): " +  str(bbo.distance_to_front_wall) + bcolors.ENDC
+            print bcolors.OKBLUE + "odom_angle: " +  str(bbo.agent_rotation_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "wall_angle: " +  str(bbo.front_wall_angle) + bcolors.ENDC
+            print bcolors.OKBLUE + "distance to front wall(rho): " +  str(bbo.distance_to_right_wall) + bcolors.ENDC
             print bcolors.OKBLUE + "distance to front obstacle: " +  str(bbo.distance_front) + bcolors.ENDC
             bbo.Front.append(True)
             bbo.adv_distance = bbo.distance_front - 1.7

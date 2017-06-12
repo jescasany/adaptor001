@@ -8,7 +8,7 @@
   <arg name="3d_sensor"  default="$(optenv TURTLEBOT_3D_SENSOR kinect)"/>  <!-- kinect, asus_xtion_pro -->
   
     <param name="/use_sim_time" value="true" />
-    <param name="follow_offset" value="1.8"/>
+    <param name="follow_offset" value="1.2"/>
     <param name="follow_advance" value="1.0"/>
     
     <param name = "orthog_distance_threshold" type="double" value="0.05"/>

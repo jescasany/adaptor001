@@ -79,7 +79,7 @@ def advance(distance, angle, da = True):
     
     # Keep track of the distance traveled
     dist = 0
-
+    #pdb.set_trace()
     if da:
         print bcolors.OKGREEN + "da True" + bcolors.ENDC
         # Set the movement command to forward motion

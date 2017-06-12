@@ -59,6 +59,8 @@ class BlackBoard:
         self.left_singularities = list()
         self.front_singularities = list()
         self.right_distances = list()
+        self.left_distances = list()
+        self.front_distances = list()
         self.environment_status = False
         self.arrange_status = False
         # The agent's current position on the map
