@@ -23,6 +23,7 @@ from geometry_msgs.msg import Twist
 from pi_trees_ros.pi_trees_ros import *
 
 from advance import *
+import move_advance as ma
 
 from black_board_class import BlackBoard, bbo
 import black_board as bb
@@ -146,7 +147,7 @@ class EcaAgent04:
         I_F_IS_VISITED.add_child(IS_VISITED)
         
         # Display the tree before beginning execution
-        print bcolors.HEADER + "ECAAGENT04 Behavior Tree" + bcolors.ENDC
+        print bcolors.HEADER + " ECAAGENT04 Behavior Tree " + bcolors.ENDC
         print_tree(ECAAGENT04, indent=0, use_symbols=True)
         print_dot_tree(ECAAGENT04, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree04.dot')
         
@@ -154,34 +155,39 @@ class EcaAgent04:
         while not rospy.is_shutdown():
             #pdb.set_trace()
             ECAAGENT04.run()
-            decoded = Decode(bbo.step_trace)
-            translated = decoded.get_translation()
-            print bcolors.OKGREEN + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
-            print "\n"
-            
-            #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
-            
-            if len(bbo.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
-                bbo.ex.INTERACTIONS.popitem(last=False)
+            if bbo.move_count != 0:
+                decoded = Decode(str(bbo.step_trace))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
+                print "\n"
                 
-            if bbo.sim_step >= 3:
-                bbo.boredom = True
-            bbo.sim_step += 1
-            rate.sleep()   
+                #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
+                
+                if len(bbo.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
+                    bbo.ex.INTERACTIONS.popitem(last=False)
+                    
+                if bbo.sim_step >= 3:
+                    bbo.boredom = True
+                bbo.sim_step += 1
+                rate.sleep()
+                
+            bbo.move_count += 1
     
     def is_visited(self):
         if bbo.move_count == 0:
-            rospy.loginfo("Waypoint is not visited.")
+            print bcolors.OKBLUE + "Waypoint is not visited." + bcolors.ENDC
             return True
-        if (bbo.agent_position, bbo.agent_rotation) in bbo.waypoints:
-            rospy.loginfo("Waypoint is visited.")
+        if (bbo.agent_position, bbo.agent_rotation) in bbo.waypoints and len(bbo.waypoints) > 1:
+            print bcolors.OKBLUE + "Waypoint is visited." + bcolors.ENDC
+            bb.arrange()
+            ma.move_adv()
             return True
         else:
-            rospy.loginfo("Waypoint is not visited.")
+            print bcolors.OKBLUE + "Waypoint is not visited." + bcolors.ENDC
             return True
         
     def shutdown(self):
-        print bcolors.WARNING + "MAIN stopping the agent..." + bcolors.ENDC
+        print bcolors.WARNING + "MAIN stopping of the agent..." + bcolors.ENDC
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
     
@@ -224,13 +230,21 @@ class Existence:
         :return: (str) performed interaction and mood
         """
         #pdb.set_trace
-        print bcolors.OKGREEN + "Context: " + str(self.context_interaction) + bcolors.ENDC
+        if bbo.move_count == 0:
+            ma.move_adv()
+            return 1
+        decoded = Decode(str(self.context_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Context: " + translated + bcolors.ENDC
+        print "\n"
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
         result_label = self.environment.return_result(experiment)  # consult the world and return result
         result = self.addget_result(result_label)  # add result to the dictionary
         enacted_interaction = self.get_interaction(experiment.get_label() + result.get_label())
-        print bcolors.OKGREEN + "Enacted " + str(enacted_interaction) + bcolors.ENDC
+        decoded = Decode(str(enacted_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() > 0:
             self.mood = 'HAPPY'
@@ -301,7 +315,9 @@ class Existence:
                 print bcolors.OKGREEN + "Learn " + label + bcolors.ENDC
             else:
                 interaction = self.INTERACTIONS[label]
-                print bcolors.OKGREEN + 'Incrementing weight for ' + str(interaction) + bcolors.ENDC
+                decoded = Decode(str(interaction))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + 'Incrementing weight for ' + translated + bcolors.ENDC
                 interaction.increment_weight()
 
     def anticipate(self):
@@ -319,7 +335,9 @@ class Existence:
                 # proclivity is a product of the weight of the whole interaction and a valence of proposed
                 proclivity = activated_interaction.get_weight() * proposed_interaction.get_valence()
                 anticipations.append(Anticipation(proposed_interaction, proclivity))
-                print bcolors.OKGREEN + "Afforded: ", proposed_interaction, " proclivity: " + str(proclivity) + bcolors.ENDC
+                decoded = Decode(str(proposed_interaction))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + "Afforded: " + translated + " with proclivity: " + str(proclivity) + bcolors.ENDC
         return anticipations
 
     def get_activated_interactions(self):
@@ -345,12 +363,16 @@ class Existence:
             afforded_interaction = anticipations[0].get_interaction()
             if afforded_interaction.get_valence() >= 0:
                 intended_interaction = afforded_interaction
-                print bcolors.OKGREEN + "Intending " + str(intended_interaction) + bcolors.ENDC
+                decoded = Decode(str(intended_interaction))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + "Intending " + translated + bcolors.ENDC
                 chosen_experiment = intended_interaction.get_experiment()
             else:
                 # if proposed interaction leads to negative valence, choose at random
                 chosen_experiment = self.get_random_experiment(afforded_interaction)
-                print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
+                decoded = Decode(str(chosen_experiment.get_label()))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + translated + bcolors.ENDC
         else:
             # if nothing was anticipated, choose at random
             # we have decided to use the max valence interaction instead
@@ -362,7 +384,9 @@ class Existence:
                     experiment = self.primitive_interactions[interaction][0]
             chosen_experiment = self.EXPERIMENTS[experiment]
             #chosen_experiment = self.get_random_experiment(None)
-            print bcolors.OKGREEN + "Don't know what to do, intending experiment " + chosen_experiment.get_label() + bcolors.ENDC
+            decoded = Decode(str(chosen_experiment.get_label()))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Don't know what to do, intending experiment " + translated + bcolors.ENDC
         return chosen_experiment
 
     def get_random_experiment(self, interaction):
@@ -424,7 +448,9 @@ class RecursiveExistence(Existence):
         self.context_pair_interaction = None  # context at previous two steps (t-2, t-1)
 
     def step(self):
-        
+        if bbo.move_count == 0:
+            ma.move_adv()
+            return 1
         print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
         # translate the coded way of interactions in its clear meaning
         for i in self.INTERACTIONS:
@@ -436,25 +462,36 @@ class RecursiveExistence(Existence):
         
         anticipations = self.anticipate()
         for anticipation in anticipations:
-            print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
+            decoded = Decode(str(anticipation))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Anticipated: " + translated + bcolors.ENDC
             
         #pdb.set_trace()
             
         experiment = self.select_experiment(anticipations)  # recursive experiment
-        print bcolors.OKGREEN + "Selected experiment: " + experiment.get_label() + bcolors.ENDC
+        decoded = Decode(str(experiment.get_label()))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Selected experiment: " + translated + bcolors.ENDC
         intended_interaction = experiment.get_intended_interaction()
         print bcolors.OKGREEN + "Intending: " + repr(intended_interaction) + bcolors.ENDC
-        print bcolors.OKGREEN + "Intending experiment: ", intended_interaction.get_experiment().get_label() + bcolors.ENDC
+        decoded = Decode(str(intended_interaction.get_experiment().get_label()))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Intending experiment: " + translated + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
-
-        print bcolors.OKGREEN + "Enacted " + str(enacted_interaction) + bcolors.ENDC
+        decoded = Decode(str(enacted_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
         if enacted_interaction != intended_interaction and experiment.is_abstract:
             failed_result = self.addget_result(enacted_interaction.get_label().upper())
             print bcolors.OKGREEN + "failed result: ", failed_result.get_label() + bcolors.ENDC
             valence = enacted_interaction.get_valence()
-            print bcolors.OKGREEN + "experiment: ", str(experiment) + bcolors.ENDC
+            decoded = Decode(str(experiment))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "experiment: " + translated + bcolors.ENDC
             enacted_interaction = self.addget_primitive_interaction(experiment, failed_result, valence)
-            print bcolors.OKGREEN + "Really enacted " + str(enacted_interaction) + bcolors.ENDC
+            decoded = Decode(str(enacted_interaction))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Really enacted " + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
@@ -589,7 +626,9 @@ class RecursiveExistence(Existence):
                 if activated_interaction.get_pre_interaction() in context_interactions:
                     activated_interactions.append(activated_interaction)
         for activated_interaction in activated_interactions:
-            print bcolors.OKGREEN + "Activated: " + str(activated_interaction) + bcolors.ENDC
+            decoded = Decode(str(activated_interaction))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Activated: " + translated + bcolors.ENDC
         return activated_interactions
 
     def get_context_interaction(self):
@@ -665,6 +704,9 @@ class ConstructiveExistence(RecursiveExistence):
 
     # Existence 50.2
     def step(self):
+        if bbo.move_count == 0:
+            ma.move_adv()
+            return 1
         #pdb.set_trace
         print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
         for i in self.INTERACTIONS:
@@ -676,16 +718,24 @@ class ConstructiveExistence(RecursiveExistence):
         
         anticipations = self.anticipate()
         for anticipation in anticipations:
-            print bcolors.OKGREEN + "Anticipated: " + str(anticipation) + bcolors.ENDC
+            decoded = Decode(str(anticipation))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Anticipated: " + translated + bcolors.ENDC
         intended_interaction = self.select_interaction(anticipations)
-        print bcolors.OKGREEN + "Intended interaction: " + str(intended_interaction) + bcolors.ENDC
+        decoded = Decode(str(intended_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Intended interaction: " + translated + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
-        print bcolors.OKGREEN + "Enacted interaction: " + str(enacted_interaction) + bcolors.ENDC
+        decoded = Decode(str(enacted_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Enacted interaction: " + translated + bcolors.ENDC
 
         # if intended interaction failed, record the alternative
         if enacted_interaction != intended_interaction:
             intended_interaction.add_alternative_interaction(enacted_interaction)
-            print bcolors.OKGREEN + "Alternative interactions:" + str(intended_interaction.get_alternative_interactions()) + bcolors.ENDC
+            decoded = Decode(str(intended_interaction.get_alternative_interactions()))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Alternative interactions:" + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
@@ -755,7 +805,9 @@ class ConstructiveExistence(RecursiveExistence):
     def anticipate(self):
         #pdb.set_trace
         anticipations = self.get_default_anticipations()
-        print bcolors.OKGREEN + "Default anticipations: " + str(anticipations) + bcolors.ENDC
+        decoded = Decode(str(anticipations))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Default anticipations: " + translated + bcolors.ENDC
         activated_interactions = self.get_activated_interactions()
         # print "Activated interactions: ", activated_interactions
         if self.context_interaction is not None:

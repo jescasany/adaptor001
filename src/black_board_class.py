@@ -25,14 +25,23 @@ class BlackBoard:
         self.line_count = 0
         # initialize one simulation step (that might consist of several primitive steps)
         self.sim_step = 1
+        self.step_trace = None
         # Initialize a number of variables for the blackboard
         self.kinect_scan = list()
         self.filtered_scan = list()
         # Initialize tolerance for the filter
         self.tolerance = 0.1
+        # Laser reading number for right, front and left
+        self.laser_right_start = 0
+        self.laser_right_end = 300
+        self.laser_front_start = 300
+        self.laser_front_end = 338
+        self.laser_left_start = 338
+        self.laser_left_end = 639
         # Initialize distance and angle to advance
         self.adv_distance = 1.0      # meters
         self.adv_angle = 0.0     # radians
+        self.da = True  #  Order to move: distance-angle or angle-distance
         
         self.driving_forward = True      # is True if there is no obstacle ahead 
         self.move_fail = False       #  whether move_adv fails or not

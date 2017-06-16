@@ -17,7 +17,7 @@ from math import radians, sqrt, pow, degrees
 
 from fancy_prompts import bcolors
 
-def advance(distance, angle, da = True):
+def advance(distance, angle, da):
     """ Publisher to control the robot's speed """
     cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
     # How fast will we update the robot's movement?
@@ -82,6 +82,7 @@ def advance(distance, angle, da = True):
     #pdb.set_trace()
     if da:
         print bcolors.OKGREEN + "da True" + bcolors.ENDC
+        print bcolors.OKGREEN + "Empieza distancia" + bcolors.ENDC
         # Set the movement command to forward motion
         move_cmd.linear.x = linear_speed
         # Enter the loop to move along
@@ -102,6 +103,7 @@ def advance(distance, angle, da = True):
         move_cmd.angular.z = angular_speed
         # Track the last angle measured
         last_angle = quat_to_angle(rotation)
+        print bcolors.OKGREEN + "Empieza angle" + bcolors.ENDC
         # Track how far we have turned
         turn_angle = 0
         done = False
@@ -142,6 +144,7 @@ def advance(distance, angle, da = True):
         move_cmd.angular.z = angular_speed
         # Track the last angle measured
         last_angle = quat_to_angle(rotation)
+        print bcolors.OKGREEN + "Empieza angle" + bcolors.ENDC
         # Track how far we have turned
         turn_angle = 0
         done = False

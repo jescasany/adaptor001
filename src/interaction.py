@@ -53,7 +53,13 @@ class Interaction:
         pdb.set_trace
         interaction = self
         if bbo.boredom:
-            return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
+            if self.is_primitive():
+                return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
+            else:
+                pre = self.get_pre_interaction()
+                post = self.get_post_interaction()
+                self.valence = pre.get_valence() + post.get_valence()
+                return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
         else:
             if self.is_primitive():
                 return self.valence

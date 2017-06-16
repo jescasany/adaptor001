@@ -8,7 +8,7 @@ Created on Wed May 10 12:37:56 2017
 import pdb
 import math
 from black_board_class import BlackBoard, bbo
-import black_board as bb
+import move_advance as ma
 
 class Environment:
     """
@@ -32,7 +32,7 @@ class Environment:
             else:
                 bbo.adv_distance = 0.0
             bbo.adv_angle = 0.0
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r1'  # moved forward following a wall on the right
             elif not bbo.move_fail and not (True in bbo.Right):
@@ -43,7 +43,7 @@ class Environment:
             #pdb.set_trace()
             bbo.adv_distance = 0.0
             bbo.adv_angle = math.pi/2
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r2'   # turn left sensing a wall on the right
             elif not bbo.move_fail and not (True in bbo.Right):
@@ -53,7 +53,7 @@ class Environment:
         elif experiment.get_label() == 'e3':
             bbo.adv_distance = 0.0
             bbo.adv_angle = -math.pi/2
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r3'   # turn right sensing a wall on the right
             elif not bbo.move_fail and not (True in bbo.Right):
@@ -106,7 +106,7 @@ class ConstructiveEnvironment:
             else:
                 bbo.adv_distance = 0.0
             bbo.adv_angle = 0.0
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r1'   # moved forward following a wall on the right
             elif not bbo.move_fail:
@@ -116,7 +116,7 @@ class ConstructiveEnvironment:
         elif experiment == 'e2':
             bbo.adv_distance = 0.0
             bbo.adv_angle = math.pi/2
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r2'   # turn left sensing a wall on the right
             elif not bbo.move_fail and not (True in bbo.Right):
@@ -126,7 +126,7 @@ class ConstructiveEnvironment:
         elif experiment == 'e3':
             bbo.adv_distance = 0.0
             bbo.adv_angle = -math.pi/2
-            bb.move_adv()
+            ma.move_adv()
             if not bbo.move_fail and True in bbo.Right:
                 result = 'r3'   # turn right sensing a wall on the right
             elif not bbo.move_fail and not (True in bbo.Right):
