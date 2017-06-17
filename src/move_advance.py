@@ -32,18 +32,21 @@ def singularities_selection():
         bbo.da = True
         
     elif True in bbo.Right and bbo.driving_forward == False:
+        if bbo.distance_to_right_wall > 1.2 or bbo.distance_to_right_wall < 0.8:
+            get_close_line()
+            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, bbo.da)
         print "Turning to the left since RIGHT and FRONT are busy"
         bbo.adv_distance = 0.0
         bbo.adv_angle = math.pi/2
         bbo.da = True
         
-    elif len(bbo.front_singularities) == 4:
+    elif len(bbo.front_singularities) >= 4:
         dist = bbo.front_distances[1]
-        bbo.adv_distance = dist + 1.2
+        bbo.adv_distance = dist + 1.5
         bbo.adv_angle = 0.0
         bbo.da = True
         
-    elif len(bbo.right_singularities) == 3 and bbo.Right == [True, False]:
+    elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [True, False]:
         corner_index = bbo.right_singularities[1]
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
@@ -52,7 +55,7 @@ def singularities_selection():
         bbo.adv_angle = -math.pi/2
         bbo.da = True
         
-    elif len(bbo.right_singularities) == 3 and bbo.Right == [False, True]:
+    elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [False, True]:
         corner_index = bbo.right_singularities[1]
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
@@ -144,11 +147,12 @@ def get_close_line():
         fa = bb.clamp(bbo.distance_front, 1.0, 3.5)  # bbo.distance_front is  min(bbo.kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
         #dist = min(bbo.distance_to_right_wall, line.r)
         dist = bbo.distance_to_right_wall
+        print "distance to wall: ", dist
         bbo.adv_distance = math.sqrt(math.pow(dist - fo, 2) + math.pow(fa, 2))
         th = math.pi/2 - math.atan(fa/abs(dist - fo))
-        bbo.adv_angle = -th
+        bbo.adv_angle = th
         if (dist - fo) > 0:
-            bbo.adv_angle = th
+            bbo.adv_angle = -th
         bbo.da = False
             
 def move_adv():

@@ -172,6 +172,7 @@ def right_wall_param(r, start_index, end_index, maximum_range, first_index):
         bbo.right_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
         dist = min(r)
+        print "dist, line.r: ", dist, line.r
         bbo.distance_to_right_wall = min(dist, abs(line.r))
 
     return line
@@ -258,10 +259,11 @@ def clear_lines():
             bbo.lines.lines.remove(l)
             
 def line_storage(line):
+    clear_lines()
     if line is not None and line not in bbo.lines.lines:
         bbo.lines.lines.append(line)
-        if len(bbo.lines.lines) > 1:
-            bbo.lines.lines.pop(0)
+#        if len(bbo.lines.lines) > 1:
+#            bbo.lines.lines.pop(0)
 #    print len(bbo.lines.lines)
 #    print bcolors.OKGREEN + "LINES: " + bcolors.ENDC
 #    print bbo.lines
@@ -282,6 +284,10 @@ def laser_scan():
     # Subscribe the /base_scan topic to get the range readings  
     rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, scan_callback, queue_size = 10)
     rospy.sleep(0.1)
+    bbo.kinect_scan = []
+    # transform the laser readings to one from three (0-639 to 0-213)
+    for i in range(0, len(bbo.raw_kinect_scan), 3):
+        bbo.kinect_scan.append(bbo.raw_kinect_scan[i])
     bbo.distance_front = min(bbo.kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
     if bbo.distance_front <= 1.7:
         bbo.driving_forward = False
@@ -296,9 +302,9 @@ def laser_scan():
     return 1
     
 def scan_callback(msg):
-    bbo.kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
+    bbo.raw_kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
     bbo.angle_min = msg.angle_min
-    bbo.angle_increment = msg.angle_increment
+    bbo.angle_increment = 3 * msg.angle_increment
     
 def formule(L, tolerance):
     f = 0
