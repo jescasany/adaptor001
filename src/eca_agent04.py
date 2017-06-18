@@ -180,6 +180,7 @@ class EcaAgent04:
         if (bbo.agent_position, bbo.agent_rotation) in bbo.waypoints and len(bbo.waypoints) > 1:
             print bcolors.OKBLUE + "Waypoint is visited." + bcolors.ENDC
             bb.arrange()
+            bbo.waypoint_visited = True
 #            ma.move_adv()
             return True
         else:

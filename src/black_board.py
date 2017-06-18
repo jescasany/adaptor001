@@ -171,8 +171,7 @@ def right_wall_param(r, start_index, end_index, maximum_range, first_index):
         # approximate wall_angle (degrees)
         bbo.right_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
-        dist = min(r)
-        print "dist, line.r: ", dist, line.r
+        dist = bbo.kinect_scan[0]
         bbo.distance_to_right_wall = min(dist, abs(line.r))
 
     return line
@@ -184,7 +183,7 @@ def left_wall_param(r, start_index, end_index, maximum_range, first_index):
         # approximate wall_angle (degrees)
         bbo.left_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
-        dist = min(r)
+        dist = bbo.kinect_scan[106]
         bbo.distance_to_left_wall = min(dist, abs(line.r))
 
     return line
@@ -197,7 +196,7 @@ def front_wall_param(r, start_index, end_index, maximum_range, first_index):
         # approximate wall_angle (degrees)
         bbo.front_wall_angle = normalize_angle(line.alpha)*180./math.pi
         # approximate dist to wall (meters)
-        dist = min(r)
+        dist = bbo.kinect_scan[53]
         bbo.distance_to_front_wall = min(dist, abs(line.r))
 
     return line
@@ -286,8 +285,12 @@ def laser_scan():
     rospy.sleep(0.1)
     bbo.kinect_scan = []
     # transform the laser readings to one from three (0-639 to 0-213)
-    for i in range(0, len(bbo.raw_kinect_scan), 3):
+    for i in range(0, len(bbo.raw_kinect_scan), 6):
+        if bbo.raw_kinect_scan[i] == 5.0:
+            bbo.raw_kinect_scan[i] = 7.0
         bbo.kinect_scan.append(bbo.raw_kinect_scan[i])
+#    print bbo.kinect_scan, len(bbo.kinect_scan)
+#    raw_input('Enter to continue')
     bbo.distance_front = min(bbo.kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
     if bbo.distance_front <= 1.7:
         bbo.driving_forward = False
@@ -304,7 +307,7 @@ def laser_scan():
 def scan_callback(msg):
     bbo.raw_kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
     bbo.angle_min = msg.angle_min
-    bbo.angle_increment = 3 * msg.angle_increment
+    bbo.angle_increment = 6 * msg.angle_increment
     
 def formule(L, tolerance):
     f = 0
@@ -324,7 +327,7 @@ def moving_window_filtro(x, tolerance=0.2, n_neighbors=1):
     for i in range(n):
         fi = abs(formule(x[i:i+width], tolerance))
         filtro.append(fi)
-        if fi != 0.0 and (i - last_sing) > 20:
+        if fi != 0.0 and (i - last_sing) > 4:
             singularity.append(i)
             last_sing = i
         
@@ -460,12 +463,12 @@ def right_status():
     elif n == 3:
         bbo.Right1 = bbo.Right[0]
         bbo.Right2 = bbo.Right[1]
-        bbo.Right3 = bbo.Right[2]
-        
-    #raw_input("Press ENTER to continue...")
+        bbo.Right3 = bbo.Right[2]  
+    
     if line is not None:
         line_display()
-        
+    print tracks    
+    raw_input("Right Status * Press ENTER to continue...")    
     return 1
 
 def left_status():
@@ -524,8 +527,8 @@ def left_status():
             if len(singularities) != 0:
                 first_index = singularities[index_count]
                 line = extract_lines(t, 'L', first_index)
-                index_count += 1
                 line_storage(line)
+                index_count += 1
             else:
                 first_index = index[0]
                 line = extract_lines(t, 'L', first_index)
@@ -555,12 +558,11 @@ def left_status():
         bbo.Left1 = bbo.Left[0]
         bbo.Left2 = bbo.Left[1]
         bbo.Left3 = bbo.Left[2]
-    
-    #        raw_input("Press a key to continue...")
         
     if line is not None:
         line_display()
-        
+    print tracks
+    raw_input("Left Status * Press ENTER to continue...")     
     return 1
 
 def front_status():
@@ -621,8 +623,8 @@ def front_status():
             if len(singularities) != 0:
                 first_index = singularities[index_count]
                 line = extract_lines(t, 'F', first_index)
-                index_count += 1
                 line_storage(line)
+                index_count += 1
             else:
                 first_index = index[0]
                 line = extract_lines(t, 'F', first_index)
@@ -656,8 +658,8 @@ def front_status():
         
     if line is not None:
         line_display()
-        
-    #raw_input("Press ENTER to continue...")
+    print tracks    
+    raw_input("Front Status * Press ENTER to continue...") 
     
     return 1
 

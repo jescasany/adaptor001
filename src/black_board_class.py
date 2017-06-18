@@ -30,14 +30,14 @@ class BlackBoard:
         self.kinect_scan = list()
         self.filtered_scan = list()
         # Initialize tolerance for the filter
-        self.tolerance = 0.2
+        self.tolerance = 0.3
         # Laser reading number for right, front and left
         self.laser_right_start = 0
-        self.laser_right_end = 100
-        self.laser_front_start = 100
-        self.laser_front_end = 113
-        self.laser_left_start = 113
-        self.laser_left_end = 213
+        self.laser_right_end = 36
+        self.laser_front_start = 31
+        self.laser_front_end = 75
+        self.laser_left_start = 70
+        self.laser_left_end = 106
         # Initialize distance and angle to advance
         self.adv_distance = 1.0      # meters
         self.adv_angle = 0.0     # radians
@@ -81,6 +81,7 @@ class BlackBoard:
         self.agent_rotation_angle = 0.0
         # Create a dictionary to hold navigation waypoints
         self.waypoints = list()
+        self.waypoint_visited = False
         (self.agent_position, self.agent_rotation) = self.agent_pose 
         self.odom_angle = 0.0
         self.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms

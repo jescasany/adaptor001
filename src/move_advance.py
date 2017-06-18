@@ -31,10 +31,7 @@ def singularities_selection():
         bbo.adv_angle = -math.pi/2
         bbo.da = True
         
-    elif True in bbo.Right and bbo.driving_forward == False:
-        if bbo.distance_to_right_wall > 1.2 or bbo.distance_to_right_wall < 0.8:
-            get_close_line()
-            (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, bbo.da)
+    elif True in bbo.Right and True in bbo.Front:
         print "Turning to the left since RIGHT and FRONT are busy"
         bbo.adv_distance = 0.0
         bbo.adv_angle = math.pi/2

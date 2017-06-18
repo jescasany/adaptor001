@@ -87,6 +87,8 @@ def advance(distance, angle, da):
         move_cmd.linear.x = linear_speed
         # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
+            #pdb.set_trace()
+#            last_dist = dist
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
             r.sleep()
@@ -94,6 +96,15 @@ def advance(distance, angle, da):
             (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
             # Compute the Euclidean distance from the start
             dist = sqrt(pow((position.x - x_start), 2) + pow((position.y - y_start), 2))
+#            if dist == last_dist and dist != 0.0:
+#                 # Move forward for a time to go the desired distance
+#                linear_duration = 1.5/abs(linear_speed) 
+#                ticks = int(linear_duration * rate)
+#                move_cmd.linear.x = -linear_speed
+#                for t in range(ticks):
+#                    cmd_vel_pub.publish(move_cmd)
+#                    r.sleep()
+#                continue
         # Stop the robot before the rotation
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
@@ -196,6 +207,7 @@ def advance(distance, angle, da):
         dist = 0
         # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
+            #last_dist = dist
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
             r.sleep()
@@ -203,6 +215,15 @@ def advance(distance, angle, da):
             (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
             # Compute the Euclidean distance from the start
             dist = sqrt(pow((position.x - x_start), 2) + pow((position.y - y_start), 2))
+#            if dist == last_dist and dist != 0.0:
+#                 # Move forward for a time to go the desired distance
+#                linear_duration = 1.5/abs(linear_speed) 
+#                ticks = int(linear_duration * rate)
+#                move_cmd.linear.x = -linear_speed
+#                for t in range(ticks):
+#                    cmd_vel_pub.publish(move_cmd)
+#                    r.sleep()
+#                continue
         # Stop the robot before the rotation
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
