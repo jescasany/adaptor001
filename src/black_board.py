@@ -284,14 +284,15 @@ def laser_scan():
     rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, scan_callback, queue_size = 10)
     rospy.sleep(0.1)
     bbo.kinect_scan = []
-    # transform the laser readings to one from three (0-639 to 0-213)
+    bbo.distance_front = min(bbo.raw_kinect_scan[300:338])
+    # transform the laser readings to one in six (0-639 to 0-106)
     for i in range(0, len(bbo.raw_kinect_scan), 6):
         if bbo.raw_kinect_scan[i] == 5.0:
             bbo.raw_kinect_scan[i] = 7.0
         bbo.kinect_scan.append(bbo.raw_kinect_scan[i])
 #    print bbo.kinect_scan, len(bbo.kinect_scan)
 #    raw_input('Enter to continue')
-    bbo.distance_front = min(bbo.kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
+    
     if bbo.distance_front <= 1.7:
         bbo.driving_forward = False
     else:
@@ -327,6 +328,8 @@ def moving_window_filtro(x, tolerance=0.2, n_neighbors=1):
     for i in range(n):
         fi = abs(formule(x[i:i+width], tolerance))
         filtro.append(fi)
+        # append a singularity at least separated 4 readings from previous
+        # it's 4 for one reading in six 
         if fi != 0.0 and (i - last_sing) > 4:
             singularity.append(i)
             last_sing = i
@@ -348,6 +351,7 @@ def clamp(val, minimum, maximum):
             return val
     
 def arrange():
+    print "Arrange status"
     bbo.arrange_status = True
     
     #pdb.set_trace()
@@ -388,7 +392,7 @@ def right_status():
     #pdb.set_trace()
     
     if bbo.move_count == 0:
-        print "Move count = 0"
+        print "Right status"
         return 1
     r = list()
     r = bbo.kinect_scan
@@ -467,8 +471,8 @@ def right_status():
     
     if line is not None:
         line_display()
-    print tracks    
-    raw_input("Right Status * Press ENTER to continue...")    
+    #print tracks    
+    #raw_input("Right Status * Press ENTER to continue...")    
     return 1
 
 def left_status():
@@ -483,7 +487,7 @@ def left_status():
     
     rospy.sleep(2)
     if bbo.move_count == 0:
-        print "Move count = 0"
+        print "Left status"
         return 1
     
     r = list()
@@ -561,8 +565,8 @@ def left_status():
         
     if line is not None:
         line_display()
-    print tracks
-    raw_input("Left Status * Press ENTER to continue...")     
+    #print tracks
+    #raw_input("Left Status * Press ENTER to continue...")     
     return 1
 
 def front_status():
@@ -578,7 +582,7 @@ def front_status():
     
     rospy.sleep(2)
     if bbo.move_count == 0:
-        print "Move count = 0"
+        print "Front status"
         return 1
     
     r = list()
@@ -658,8 +662,8 @@ def front_status():
         
     if line is not None:
         line_display()
-    print tracks    
-    raw_input("Front Status * Press ENTER to continue...") 
+    #print tracks    
+    #raw_input("Front Status * Press ENTER to continue...") 
     
     return 1
 

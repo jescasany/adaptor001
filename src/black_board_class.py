@@ -34,8 +34,8 @@ class BlackBoard:
         # Laser reading number for right, front and left
         self.laser_right_start = 0
         self.laser_right_end = 36
-        self.laser_front_start = 31
-        self.laser_front_end = 75
+        self.laser_front_start = 46
+        self.laser_front_end = 60
         self.laser_left_start = 70
         self.laser_left_end = 106
         # Initialize distance and angle to advance

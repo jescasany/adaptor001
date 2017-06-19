@@ -78,17 +78,18 @@ def advance(distance, angle, da):
     y_start = position.y
     
     # Keep track of the distance traveled
-    dist = 0
+    dist = 0.0
     #pdb.set_trace()
     if da:
         print bcolors.OKGREEN + "da True" + bcolors.ENDC
         print bcolors.OKGREEN + "Empieza distancia" + bcolors.ENDC
         # Set the movement command to forward motion
         move_cmd.linear.x = linear_speed
+        bump_count = 0
         # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
             #pdb.set_trace()
-#            last_dist = dist
+            last_dist = dist
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
             r.sleep()
@@ -96,15 +97,20 @@ def advance(distance, angle, da):
             (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
             # Compute the Euclidean distance from the start
             dist = sqrt(pow((position.x - x_start), 2) + pow((position.y - y_start), 2))
-#            if dist == last_dist and dist != 0.0:
-#                 # Move forward for a time to go the desired distance
-#                linear_duration = 1.5/abs(linear_speed) 
-#                ticks = int(linear_duration * rate)
-#                move_cmd.linear.x = -linear_speed
-#                for t in range(ticks):
-#                    cmd_vel_pub.publish(move_cmd)
-#                    r.sleep()
-#                continue
+            
+            if dist == last_dist and dist != 0.0:
+                bump_count += 1
+                print "dist, goal_distance", dist, goal_distance
+                print "BUMP"+str(bump_count)
+                if bump_count > 10:
+                    # Move forward for a time to go the desired distance
+                    linear_duration = 1.5/abs(linear_speed) 
+                    ticks = int(linear_duration * rate)
+                    move_cmd.linear.x *= -1
+                    for t in range(ticks):
+                        cmd_vel_pub.publish(move_cmd)
+                        r.sleep()
+                    continue
         # Stop the robot before the rotation
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
@@ -195,7 +201,7 @@ def advance(distance, angle, da):
         cmd_vel_pub.publish(move_cmd)
         rospy.sleep(1)
         print bcolors.OKGREEN + "Empieza distancia" + bcolors.ENDC 
-#        pdb.set_trace()
+        #pdb.set_trace()
         # Get the starting position values     
         (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
                     
@@ -204,10 +210,11 @@ def advance(distance, angle, da):
         
         move_cmd.linear.x = linear_speed
         # Keep track of the distance traveled
-        dist = 0
+        dist = 0.0
+        bump_count = 0
         # Enter the loop to move along
         while dist < goal_distance and not rospy.is_shutdown():
-            #last_dist = dist
+            last_dist = dist
             # Publish the Twist message and sleep 1 cycle         
             cmd_vel_pub.publish(move_cmd)
             r.sleep()
@@ -215,15 +222,20 @@ def advance(distance, angle, da):
             (position, rotation) = get_odom(tf_listener, odom_frame, base_frame)
             # Compute the Euclidean distance from the start
             dist = sqrt(pow((position.x - x_start), 2) + pow((position.y - y_start), 2))
-#            if dist == last_dist and dist != 0.0:
-#                 # Move forward for a time to go the desired distance
-#                linear_duration = 1.5/abs(linear_speed) 
-#                ticks = int(linear_duration * rate)
-#                move_cmd.linear.x = -linear_speed
-#                for t in range(ticks):
-#                    cmd_vel_pub.publish(move_cmd)
-#                    r.sleep()
-#                continue
+            
+            if dist == last_dist and dist != 0.0:
+                bump_count += 1
+                print "dist, goal_distance", dist, goal_distance
+                print "BUMP"+str(bump_count)
+                if bump_count > 10:
+                    # Move forward for a time to go the desired distance
+                    linear_duration = 1.5/abs(linear_speed) 
+                    ticks = int(linear_duration * rate)
+                    move_cmd.linear.x *= -1
+                    for t in range(ticks):
+                        cmd_vel_pub.publish(move_cmd)
+                        r.sleep()
+                    continue
         # Stop the robot before the rotation
         move_cmd = Twist()
         cmd_vel_pub.publish(move_cmd)
@@ -247,6 +259,7 @@ def get_odom(tf_listener, odom_frame, base_frame):
         return
 
     return (Point(*trans), Quaternion(*rot))
+
 
  
 

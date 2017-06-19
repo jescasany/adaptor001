@@ -53,8 +53,8 @@ def singularities_selection():
         bbo.da = True
         
     elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [False, True]:
-        corner_index = bbo.right_singularities[1]
-        corner_distance = bbo.right_distances[1]
+        corner_index = bbo.right_singularities[-2]
+        corner_distance = bbo.right_distances[-2]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.sin(angle)
         bbo.adv_distance = dist + 1.2
@@ -67,14 +67,15 @@ def singularities_selection():
 def get_close():
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
     singularities_selection()
-    print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
-    print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
-
     # Publish the twist message produced by the controller.
     print bcolors.OKBLUE + "STOP the agent before wall following" + bcolors.ENDC
     bbo.cmd_vel_publisher.publish(Twist())
     rospy.sleep(2)
+    print bcolors.OKBLUE + "Agent STOPPED" + bcolors.ENDC
     bb.laser_scan()
+    bbo.adv_distance = bb.clamp(bbo.adv_distance, 0.0, 4.0)
+    print bcolors.OKBLUE + "bbo.adv_distance: " +  str(bbo.adv_distance) + " m" + bcolors.ENDC
+    print bcolors.OKBLUE + "bbo.adv_angle: " +  str(math.degrees(bbo.adv_angle)) + " deg" + bcolors.ENDC 
     if bbo.driving_forward:
         print "Moving due to singularity"
         (bbo.agent_position, bbo.agent_rotation) = advance(bbo.adv_distance, bbo.adv_angle, bbo.da)
@@ -110,16 +111,16 @@ def get_close_line():
     be reset to 'None' indicating there is no suitable line to follow.
     """
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
-    line = None
-    lines = bbo.lines
-    smallest_r = float('inf')
-    for l in lines.lines:
-        if l.r < smallest_r:
-            smallest_r = l.r
-            line = l
-
-    print bcolors.OKBLUE + "Closest line: " + bcolors.ENDC
-    print line
+#    line = None
+#    lines = bbo.lines
+#    smallest_r = float('inf')
+#    for l in lines.lines:
+#        if l.r < smallest_r:
+#            smallest_r = l.r
+#            line = l
+#
+#    print bcolors.OKBLUE + "Closest line: " + bcolors.ENDC
+#    print line
     #raw_input("Press ENTER to continue...")
     """
     Place the closest line into a new ExtractedLines message and publish it on
@@ -128,29 +129,36 @@ def get_close_line():
     to its original value.  This is because rviz will display the line w.r.t.
     the 'base_link' frame.
     """
-    lines.header.frame_id = '/base_link'
-    sel_lines = ExtractedLines()
-    sel_lines.header.frame_id = lines.header.frame_id
-    if line != None:
-        sel_line = ExtractedLine()
-        sel_line.r = line.r
-        sel_line.alpha = line.alpha
-        sel_lines.lines.append(sel_line)
-        
-        bbo.selected_lines_publisher.publish(sel_lines)
+#    lines.header.frame_id = '/base_link'
+#    sel_lines = ExtractedLines()
+#    sel_lines.header.frame_id = lines.header.frame_id
+#    if line != None:
+#        sel_line = ExtractedLine()
+#        sel_line.r = line.r
+#        sel_line.alpha = line.alpha
+#        sel_lines.lines.append(sel_line)
+#        
+#        bbo.selected_lines_publisher.publish(sel_lines)
 
-        fo = bbo.follow_offset
-        #fa = bbo.follow_advance
-        fa = bb.clamp(bbo.distance_front, 1.0, 3.5)  # bbo.distance_front is  min(bbo.kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
-        #dist = min(bbo.distance_to_right_wall, line.r)
-        dist = bbo.distance_to_right_wall
-        print "distance to wall: ", dist
+    fo = bbo.follow_offset
+    fo = 1.5
+    #fa = bbo.follow_advance
+    fa = bbo.distance_front  # bbo.distance_front is  min(bbo.raw_kinect_scan[bbo.laser_front_start:bbo.laser_front_end])
+    #dist = min(bbo.distance_to_right_wall, line.r)
+    dist = bbo.distance_to_right_wall
+    print "distance to wall: ", dist
+    print "distance to front: ", bbo.distance_front
+    if dist < 1.0 or dist > 2.0:
         bbo.adv_distance = math.sqrt(math.pow(dist - fo, 2) + math.pow(fa, 2))
         th = math.pi/2 - math.atan(fa/abs(dist - fo))
         bbo.adv_angle = th
         if (dist - fo) > 0:
             bbo.adv_angle = -th
         bbo.da = False
+    else:
+        bbo.adv_distance = bbo.distance_front - 1.7
+        bbo.adv_angle = 0.0
+        bbo.da = True
             
 def move_adv():
     print bcolors.OKBLUE + "Estoy en move advance" + bcolors.ENDC
@@ -182,8 +190,10 @@ def move_adv():
             bbo.move_fail = False
         else:
             print bcolors.OKBLUE + "move_adv FAILED" + bcolors.ENDC
-            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, 0.0, bbo.da)
-            
+            bbo.da = False
+            (bbo.agent_position, bbo.agent_rotation) = advance(1.0, math.pi, bbo.da)
+            rospy.sleep(2)
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -(math.pi/2), bbo.da)
             bbo.move_fail = True
             
     except:
