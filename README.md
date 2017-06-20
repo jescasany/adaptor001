@@ -352,3 +352,23 @@ We can use the same general approach for extracting __circles__ as we used for e
     Hybrid simultaneous localization and map building: a natural integration of topological and metric.
     Robotics and Autonomous Systems, 44:3–14.
 
+
+__20/06/2017__
+
+We have integrated our code with the code of Katja Abramova called enactiveAgents.
+
+We have called our new code version eca_agent04.py.
+We made our last version --eca_agent03.py-- as modular as possible in order to make it more readable, modifiable and maintainable.
+
+This new code is working, however we have to tweak experiments an their valences so that it runs properly.
+
+Here we have endowed the robot with the ability of feel walls through the use of singularities. And we manage this singularities that are segments of walls, their intersections(corners) and their open discontinuities(doors).
+
+We get the raw laser scanned readings, then we transform them to one reading in six and we can pass a simple filter over them to get singularities from the tramsformed set of singularities.
+
+Singularity extraction is not too artificial since it is very similar to what is made by each biological sensor (vision, hearing).
+
+We have to use now the __is_visited__ behavior. The agent knows that it has been already in this position, so it can handle this situation to navigate.
+
+Also, we have implemented a way to handle the bump situation in Stage, since Stage now doesn't include any driver to bumpers.
+
