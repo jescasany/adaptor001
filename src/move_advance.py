@@ -30,12 +30,14 @@ def singularities_selection():
         bbo.adv_distance = 0.0
         bbo.adv_angle = -math.pi/2
         bbo.da = True
+        bbo.singularity_selection = 1
         
     elif True in bbo.Right and True in bbo.Front:
         print "Turning to the left since RIGHT and FRONT are busy"
         bbo.adv_distance = 0.0
         bbo.adv_angle = math.pi/2
         bbo.da = True
+        bbo.singularity_selection = 2
         
     elif len(bbo.front_singularities) >= 4:
         dist = bbo.front_distances[1]
@@ -51,6 +53,7 @@ def singularities_selection():
         bbo.adv_distance = dist + 1.2
         bbo.adv_angle = -math.pi/2
         bbo.da = True
+        bbo.singularity_selection = 3
         
     elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [False, True]:
         corner_index = bbo.right_singularities[-2]
@@ -60,10 +63,12 @@ def singularities_selection():
         bbo.adv_distance = dist + 1.2
         bbo.adv_angle = 0.0
         bbo.da = True
+        bbo.singularity_selection = 4
         
     elif len(bbo.right_singularities) == 0:
+        bbo.singularity_selection = 5
         get_close_line()
-    
+        
 def get_close():
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
     singularities_selection()
@@ -92,53 +97,19 @@ def get_close_line():
     The position of the goal in the robot reference frame is specified by
     the values bbo.adv_distance and bbo.adv_angle in the
     robot coordinate frame /base_link.  These are obtained by summing the following two
-    vectors.  Note that fo = follow-offset and fa = follow-advance):
+    vectors.  Note that fo = follow-offset and fa = follow-advance:
     
     Vector from the origin to the closest point on the line, with a length
-    of c - fo (c: orthogonal distance of the line) 
-           [(c-fo) cos(m), (c-fo) sin(m)]
+    of r - fo (r: orthogonal distance of the line) 
+           [(r-fo) cos(m), (r-fo) sin(m)]
+    
+    We use dist (bbo.distance_to_right_wall) instead of r.
     
     Vector along the line, oriented towards counter-clockwise with length fa
            [fa cos(m+pi/2), fa sin(m+pi/2)]
-    
-    The first thing to do is account for the fact that the lines are
-    extracted in the 'base_link' reference frame. The translation of the laser from the centre of the robot
-    shouldn't have an impact on the algorithm here other than changing the
-    interpretation of the 'follow-offset' parameter.
-
-    Set 'line' to be the closest line to the robot.  If the closest line is
-    not ahead of the robot or on its right side then the 'line' variable will
-    be reset to 'None' indicating there is no suitable line to follow.
     """
     print bcolors.OKGREEN + "Wall Following" + bcolors.ENDC
-#    line = None
-#    lines = bbo.lines
-#    smallest_r = float('inf')
-#    for l in lines.lines:
-#        if l.r < smallest_r:
-#            smallest_r = l.r
-#            line = l
-#
-#    print bcolors.OKBLUE + "Closest line: " + bcolors.ENDC
-#    print line
-    #raw_input("Press ENTER to continue...")
-    """
-    Place the closest line into a new ExtractedLines message and publish it on
-    topic 'selected_lines'.  This will allow us to see the line selected
-    above in rviz.  Note that we create a new line and change the r back
-    to its original value.  This is because rviz will display the line w.r.t.
-    the 'base_link' frame.
-    """
-#    lines.header.frame_id = '/base_link'
-#    sel_lines = ExtractedLines()
-#    sel_lines.header.frame_id = lines.header.frame_id
-#    if line != None:
-#        sel_line = ExtractedLine()
-#        sel_line.r = line.r
-#        sel_line.alpha = line.alpha
-#        sel_lines.lines.append(sel_line)
-#        
-#        bbo.selected_lines_publisher.publish(sel_lines)
+
 
     fo = bbo.follow_offset
     fo = 1.5

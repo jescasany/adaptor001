@@ -57,25 +57,25 @@ class EcaAgent04:
          # initialize existence
         bbo.ex = None
         # initialize primitive interactions
-        primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
-                                  "move forward no wall": ("e1", "r4", -20),\
+        primitive_interactions = {"move forward right wall": ("e1", "r1", 50),\
+                                  "move forward no right wall": ("e1", "r4", -20),\
                                   "move forward fail": ("e1", "r10", -50),\
-                                  "turn left": ("e2", "r2", 15),\
-                                  "turn left no wall": ("e2", "r15", -20),\
-                                  "turn left fail": ("e2", "r16", -50),\
-                                  "turn right": ("e3", "r3", 25),\
-                                  "turn right no wall": ("e3", "r17", -20),\
-                                  "turn right fail": ("e3", "r18", -50),\
+                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r2", 15),\
+#                                  "turn left no wall": ("e2", "r15", -20),\
+#                                  "turn left fail": ("e1", "r16", -50),\
+                                  "turn right <-- nothing on the RIGHT": ("e1", "r3", 25),\
+#                                  "turn right no wall": ("e3", "r17", -20),\
+#                                  "turn right fail <-- nothing on the RIGHT": ("e1", "r18", -50),\
 #                                  "front free": ("e4", "r4", 1),\
 #                                  "front busy": ("e4", "r5", -2),\
-                                  "right sensing": ("e5", "r6", 20),\
-#                                  "right2 sensing": ("e5", "r8", 10),\
+                                  "right sensing corner1": ("e1", "r6", 20),\
+#                                  "right2 sensing": ("e5", "r14", 10),\
 #                                  "right3 sensing": ("e5", "r12", 10),\
-                                  "nothing on right1": ("e5", "r14", -50),\
-                                  "left sensing": ("e6", "r7", 0),\
+                                  "right sensing corner2(door)": ("e1", "r8", 20)
+#                                  "left sensing": ("e6", "r7", 0),\
 #                                  "left2 sensing": ("e6", "r9", 0),\
 #                                  "left3 sensing": ("e6", "r11", 0),\
-                                  "nothing on left1": ("e6", "r13", 0)
+#                                  "nothing on left1": ("e6", "r13", 0)
 }
         # initialize environments and existences
         self.mechanism = bbo.agent_mechanism
@@ -313,7 +313,9 @@ class Existence:
                 interaction.set_post_interaction(enacted_interaction)
                 interaction.set_valence(valence)
                 self.INTERACTIONS[label] = interaction
-                print bcolors.OKGREEN + "Learn " + label + bcolors.ENDC
+                decoded = Decode(str(label))
+                translated = decoded.get_translation()
+                print bcolors.OKGREEN + "Learn " + translated + bcolors.ENDC
             else:
                 interaction = self.INTERACTIONS[label]
                 decoded = Decode(str(interaction))
@@ -474,7 +476,9 @@ class RecursiveExistence(Existence):
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Selected experiment: " + translated + bcolors.ENDC
         intended_interaction = experiment.get_intended_interaction()
-        print bcolors.OKGREEN + "Intending: " + repr(intended_interaction) + bcolors.ENDC
+        decoded = Decode(str(intended_interaction))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Intending: " + translated + bcolors.ENDC
         decoded = Decode(str(intended_interaction.get_experiment().get_label()))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Intending experiment: " + translated + bcolors.ENDC
@@ -484,7 +488,9 @@ class RecursiveExistence(Existence):
         print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
         if enacted_interaction != intended_interaction and experiment.is_abstract:
             failed_result = self.addget_result(enacted_interaction.get_label().upper())
-            print bcolors.OKGREEN + "failed result: ", failed_result.get_label() + bcolors.ENDC
+            decoded = Decode(str(failed_result.get_label()))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "failed result: " + translated + bcolors.ENDC
             valence = enacted_interaction.get_valence()
             decoded = Decode(str(experiment))
             translated = decoded.get_translation()
@@ -619,7 +625,9 @@ class RecursiveExistence(Existence):
                 context_interactions.append(self.context_interaction.get_post_interaction())
             if self.context_pair_interaction is not None:
                 context_interactions.append(self.context_pair_interaction)
-        print bcolors.OKGREEN + "Context: " + repr(context_interactions) + bcolors.ENDC
+        decoded = Decode(str(context_interactions))
+        translated = decoded.get_translation()
+        print bcolors.OKGREEN + "Context: " + translated + bcolors.ENDC
         activated_interactions = []
         for key in self.INTERACTIONS:
             activated_interaction = self.INTERACTIONS[key]
@@ -667,9 +675,13 @@ class RecursiveExistence(Existence):
         composite_interaction.increment_weight()
 
         if composite_interaction.get_weight() == 1:
-            print bcolors.OKGREEN + "Learned: " + str(composite_interaction) + bcolors.ENDC
+            decoded = Decode(str(composite_interaction))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Learned: " + translated + bcolors.ENDC
         else:
-            print bcolors.OKGREEN + "Reinforced: " + str(composite_interaction) + bcolors.ENDC
+            decoded = Decode(str(composite_interaction))
+            translated = decoded.get_translation()
+            print bcolors.OKGREEN + "Reinforced: " + translated + bcolors.ENDC
 
         return composite_interaction
 

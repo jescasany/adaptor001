@@ -69,6 +69,7 @@ class BlackBoard:
         self.right_singularities = list()
         self.left_singularities = list()
         self.front_singularities = list()
+        self.singularity_selection = 0
         self.right_distances = list()
         self.left_distances = list()
         self.front_distances = list()
