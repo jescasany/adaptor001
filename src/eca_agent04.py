@@ -96,26 +96,6 @@ class EcaAgent04:
         IS_VISITED = CallbackTask("IS VISITED", self.is_visited)
         
         START_STEP = CallbackTask("START STEP", bbo.ex.step)
-       
-#        # The move advance task (uses CallbackTask)
-#        MOVE_ADV = CallbackTask("move_adv", self.move_adv)
-#        
-#        RIGHT_SENSING = CallbackTask("right sensing", self.right_status)
-#        FRONT_STATUS = CallbackTask("front status", self.front_status)
-#        
-#        SHORT_RIGHT = Selector("SHORT_RIGHT")
-#        
-#        SAME = CallbackTask("right sensing -- left appears", self.same)
-#        
-#        SMALL_CROSS = CallbackTask("nothing on right -- left appears", self.small_cross)
-#        FRONT_LEFT_RIGHT = CallbackTask("nothing on right -- right and left appear", self.front_left_right)
-#        FRONT_RIGHT = CallbackTask("nothing on right -- right appears", self.front_right)
-#        FRONT_ALL = CallbackTask("nothing on right -- all front appears", self.front_all)
-#        FRONT_NONE = CallbackTask("nothing on right nor front", self.front_none)
-#        
-#        CORNER = CallbackTask("CORNER", self.corner)
-#        
-#        TURN_BACK = CallbackTask("TURN_BACK", self.turn_back)
         
         # These conditions use CallbackTask
         LASER_SCAN = CallbackTask("LASER SCAN", bb.laser_scan)
@@ -124,18 +104,7 @@ class EcaAgent04:
         LEFT_STATUS = CallbackTask("LEFT STATUS", bb.left_status)
         ARRANGE = CallbackTask("ARRANGE", bb.arrange)
         
-#            PROPRIOCEPTION.add_child(SAME)
-#            PROPRIOCEPTION.add_child(SHORT_RIGHT)
-#            PROPRIOCEPTION.add_child(CORNER)
-            
-#        SHORT_RIGHT.add_child(SMALL_CROSS)
-#        SHORT_RIGHT.add_child(FRONT_LEFT_RIGHT)
-#        SHORT_RIGHT.add_child(FRONT_RIGHT)
-#        SHORT_RIGHT.add_child(FRONT_ALL)
-#        SHORT_RIGHT.add_child(FRONT_NONE)
-        
         # Add the subtrees to the root node in order of priority
-        
         ECAAGENT04.add_child(LASER_SCAN)
         ECAAGENT04.add_child(RIGHT_STATUS)
         ECAAGENT04.add_child(FRONT_STATUS)
@@ -158,7 +127,7 @@ class EcaAgent04:
             if bbo.move_count != 0:
                 decoded = Decode(str(bbo.step_trace))
                 translated = decoded.get_translation()
-                print bcolors.OKGREEN + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
+                print bcolors.OKGREEN + 'Step: ' + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
                 print "\n"
                 
                 #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
@@ -237,7 +206,6 @@ class Existence:
         decoded = Decode(str(self.context_interaction))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Context: " + translated + bcolors.ENDC
-        print "\n"
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
         result_label = self.environment.return_result(experiment)  # consult the world and return result
@@ -263,7 +231,7 @@ class Existence:
         """
         Add primitive interactions to existence
         :param primitive_interactions: a set of primitive interactions 
-        provided as a dictionary
+        provided as a dictionary like that
         {(str) interaction meaning: ((str) experiment, 
         (str) result, (int) valence)}
         """
@@ -340,7 +308,7 @@ class Existence:
                 anticipations.append(Anticipation(proposed_interaction, proclivity))
                 decoded = Decode(str(proposed_interaction))
                 translated = decoded.get_translation()
-                print bcolors.OKGREEN + "Afforded: " + translated + " with proclivity: " + str(proclivity) + bcolors.ENDC
+                print bcolors.OKGREEN + "Proposed(Afforded): " + translated + " with proclivity: " + str(proclivity) + bcolors.ENDC
         return anticipations
 
     def get_activated_interactions(self):
@@ -478,14 +446,14 @@ class RecursiveExistence(Existence):
         intended_interaction = experiment.get_intended_interaction()
         decoded = Decode(str(intended_interaction))
         translated = decoded.get_translation()
-        print bcolors.OKGREEN + "Intending: " + translated + bcolors.ENDC
+        print bcolors.OKGREEN + "Intending interaction: " + translated + bcolors.ENDC
         decoded = Decode(str(intended_interaction.get_experiment().get_label()))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Intending experiment: " + translated + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
-        print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
+        print bcolors.OKGREEN + "Enacted: " + translated + bcolors.ENDC
         if enacted_interaction != intended_interaction and experiment.is_abstract:
             failed_result = self.addget_result(enacted_interaction.get_label().upper())
             decoded = Decode(str(failed_result.get_label()))
@@ -498,7 +466,7 @@ class RecursiveExistence(Existence):
             enacted_interaction = self.addget_primitive_interaction(experiment, failed_result, valence)
             decoded = Decode(str(enacted_interaction))
             translated = decoded.get_translation()
-            print bcolors.OKGREEN + "Really enacted " + translated + bcolors.ENDC
+            print bcolors.OKGREEN + "Really enacted: " + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
@@ -508,15 +476,6 @@ class RecursiveExistence(Existence):
         # learn context_pair_interaction, context_interaction, enacted_interaction
         self.learn_recursive_interaction(enacted_interaction)
         bbo.step_trace = enacted_interaction.__repr__() + " " + self.mood
-        
-#        print self.EXPERIMENTS
-#        print "\n"
-#        print self.INTERACTIONS
-#        print "\n"
-#        print self.RESULTS
-#        print "\n"
-#        
-#        raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
         
         return 1
 
@@ -531,7 +490,7 @@ class RecursiveExistence(Existence):
             self.addget_primitive_interaction(experiment, result, valence, meaning)
 
         for experiment in self.EXPERIMENTS.values():
-            interaction = Interaction(experiment.get_label() + "r2")
+            interaction = Interaction(experiment.get_label() + "r1")
             interaction.set_valence(1)
             interaction.set_experiment(experiment)
             experiment.set_intended_interaction(interaction)
@@ -543,6 +502,7 @@ class RecursiveExistence(Existence):
         return self.EXPERIMENTS[label]
 
     def enact(self, intended_interaction):
+        #pdb.set_trace()
         if intended_interaction.is_primitive():
             return self.enact_primitive_interaction(intended_interaction)
             # experiment = intended_interaction.get_experiment()
@@ -757,16 +717,7 @@ class ConstructiveExistence(RecursiveExistence):
 
         self.learn_recursive_interaction(enacted_interaction)
         bbo.step_trace = enacted_interaction.__repr__() + " " + self.mood
-        
-#        print self.EXPERIMENTS
-#        print "\n"
-#        print self.INTERACTIONS
-#        print "\n"
-#        print self.RESULTS
-#        print "\n"
-#        
-#        raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
-        
+                
         return 1
 
     def initialize_interactions(self, primitive_interactions):

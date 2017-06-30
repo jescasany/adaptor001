@@ -62,10 +62,12 @@ class BlackBoard:
         self.Right1 = False
         self.Right2 = False
         self.Right3 = False
+        self.rf = False
         self.Front = list()
         self.Front1 = False
         self.Front2 = False
         self.Front3 = False
+        self.corner1 = False
         self.right_singularities = list()
         self.left_singularities = list()
         self.front_singularities = list()

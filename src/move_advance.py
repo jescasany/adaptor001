@@ -31,8 +31,9 @@ def singularities_selection():
         bbo.adv_angle = -math.pi/2
         bbo.da = True
         bbo.singularity_selection = 1
+        bbo.rf = True
         
-    elif True in bbo.Right and True in bbo.Front:
+    elif True in bbo.Right and True in bbo.Front and bbo.corner1 == False:
         print "Turning to the left since RIGHT and FRONT are busy"
         bbo.adv_distance = 0.0
         bbo.adv_angle = math.pi/2
@@ -46,14 +47,17 @@ def singularities_selection():
         bbo.da = True
         
     elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [True, False]:
+        if bbo.corner1 == True:
+            bbo.corner1 = False
         corner_index = bbo.right_singularities[1]
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.cos(angle)
         bbo.adv_distance = dist + 1.2
-        bbo.adv_angle = -math.pi/2
+        bbo.adv_angle = 0.0
         bbo.da = True
         bbo.singularity_selection = 3
+        bbo.corner1 = True
         
     elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [False, True]:
         corner_index = bbo.right_singularities[-2]
@@ -61,12 +65,22 @@ def singularities_selection():
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.sin(angle)
         bbo.adv_distance = dist + 1.2
-        bbo.adv_angle = 0.0
-        bbo.da = True
+        if bbo.corner1 == True and bbo.rf == True:
+            bbo.adv_angle = 0.0
+            bbo.da = False
+            bbo.corner1 = False
+            bbo.rf = False
+        elif bbo.corner1 == True:
+            bbo.adv_angle = -math.pi/2
+            bbo.da = False
+        else:
+            bbo.adv_angle = 0.0
+            bbo.da = True
         bbo.singularity_selection = 4
         
     elif len(bbo.right_singularities) == 0:
         bbo.singularity_selection = 5
+        bbo.rf = False
         get_close_line()
         
 def get_close():
@@ -162,7 +176,7 @@ def move_adv():
         else:
             print bcolors.OKBLUE + "move_adv FAILED" + bcolors.ENDC
             bbo.da = False
-            (bbo.agent_position, bbo.agent_rotation) = advance(1.0, math.pi, bbo.da)
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.5, math.pi, bbo.da)
             rospy.sleep(2)
             (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -(math.pi/2), bbo.da)
             bbo.move_fail = True
