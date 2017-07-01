@@ -34,15 +34,15 @@ class Environment:
             bbo.adv_angle = 0.0
             ma.move_adv()
             if bbo.singularity_selection == 2:
-               result = 'r2'  #  turn left <-- RIGHT-FRONT are busy
+               result = 'r02'  #  turn left <-- RIGHT-FRONT are busy
             elif bbo.singularity_selection == 1:
-               result = 'r3'  #  turn right <-- nothing on the RIGHT
+               result = 'r03'  #  turn right <-- nothing on the RIGHT
             elif bbo.singularity_selection == 5:
-                result = 'r1'  # moved forward following a wall on the right
+                result = 'r01'  # moved forward following a wall on the right
             elif bbo.singularity_selection == 3:
-                result = 'r6'   # right sensing: corner on the right
+                result = 'r06'   # right sensing: corner on the right
             elif bbo.singularity_selection == 4:
-                result = 'r8'   # door on the right
+                result = 'r08'   # door on the right
             else:
                 result = 'r10' # move failed: if robot bumps 
 #        elif experiment.get_label() == 'e2':
@@ -110,15 +110,15 @@ class ConstructiveEnvironment:
             bbo.adv_angle = 0.0
             ma.move_adv()
             if bbo.singularity_selection == 2:
-               result = 'r2'  #  turn left <-- RIGHT-FRONT are busy
+               result = 'r02'  #  turn left <-- RIGHT-FRONT are busy
             elif bbo.singularity_selection == 1:
-               result = 'r3'  #  turn right <-- nothing on the RIGHT
+               result = 'r03'  #  turn right <-- nothing on the RIGHT
             elif bbo.singularity_selection == 5:
-                result = 'r1'  # moved forward following a wall on the right
+                result = 'r01'  # moved forward following a wall on the right
             elif bbo.singularity_selection == 3:
-                result = 'r6'   # right sensing: corner on the right
+                result = 'r06'   # right sensing: corner on the right
             elif bbo.singularity_selection == 4:
-                result = 'r8'   # door on the right
+                result = 'r08'   # door on the right
             else:
                 result = 'r10' # move failed: if robot bumps 
 #            if not bbo.move_fail and True in bbo.Right:

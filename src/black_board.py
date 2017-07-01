@@ -413,7 +413,8 @@ def right_status():
         for i in range(len(singularities)):
             singularities[i] = singularities[i] + 1 # add 1 to make the track uniform
         singularities.insert(0, bbo.laser_right_start)
-        singularities.append(bbo.laser_right_end)
+        if bbo.laser_right_end not in singularities:
+            singularities.append(bbo.laser_right_end)
         print bcolors.OKBLUE + "Right singularities: " + repr(singularities) + bcolors.ENDC
         bbo.right_singularities = singularities
         tracks = []
@@ -509,7 +510,8 @@ def left_status():
         for i in range(len(singularities)):
             singularities[i] = singularities[i] + bbo.laser_left_start + 1   # add 1 to make the track uniform
         singularities.insert(0, bbo.laser_left_start)
-        singularities.append(bbo.laser_left_end)
+        if bbo.laser_left_end not in singularities:
+            singularities.append(bbo.laser_left_end)
         print bcolors.OKBLUE + "Left singularities: " + repr(singularities) + bcolors.ENDC
         bbo.left_singularities = singularities
         tracks = []
@@ -605,7 +607,8 @@ def front_status():
         for i in range(len(singularities)):
             singularities[i] = singularities[i] + bbo.laser_front_start + 1 # add 1 to make the track uniform
         singularities.insert(0, bbo.laser_front_start)
-        singularities.append(bbo.laser_front_end)
+        if bbo.laser_front_end not in singularities: 
+            singularities.append(bbo.laser_front_end)
         print bcolors.OKBLUE + "Front singularities: " + repr(singularities) + bcolors.ENDC
         bbo.front_singularities = singularities
         tracks = []
