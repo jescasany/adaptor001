@@ -127,10 +127,8 @@ class EcaAgent04:
             if bbo.move_count != 0:
                 decoded = Decode(str(bbo.step_trace))
                 translated = decoded.get_translation()
-                print bcolors.OKGREEN + 'Step: ' + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
                 print "\n"
-                
-                #raw_input(bcolors.WARNING + "Press ENTER to continue..." + bcolors.ENDC)
+                print bcolors.OKGREEN + 'Step: ' + str(bbo.sim_step) + " " +  str(translated) + bcolors.ENDC
                 
                 if len(bbo.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
                     bbo.ex.INTERACTIONS.popitem(last=False)
@@ -144,15 +142,18 @@ class EcaAgent04:
     
     def is_visited(self):
         if bbo.move_count == 0:
+            print "\n"
             print bcolors.OKBLUE + "Waypoint is not visited." + bcolors.ENDC
             return True
         if (bbo.agent_position, bbo.agent_rotation) in bbo.waypoints and len(bbo.waypoints) > 1:
+            print "\n"
             print bcolors.OKBLUE + "Waypoint is visited." + bcolors.ENDC
             bbo.agent_rotation_angle = bb.arrange()
             bbo.waypoint_visited = True
 #            ma.move_adv()
             return True
         else:
+            print "\n"
             print bcolors.OKBLUE + "Waypoint is not visited." + bcolors.ENDC
             return True
         
@@ -205,6 +206,7 @@ class Existence:
             return 1
         decoded = Decode(str(self.context_interaction))
         translated = decoded.get_translation()
+        print "\n"
         print bcolors.OKGREEN + "Context: " + translated + bcolors.ENDC
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
@@ -213,6 +215,7 @@ class Existence:
         enacted_interaction = self.get_interaction(experiment.get_label() + result.get_label())
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
+        print "\n"
         print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() > 0:
@@ -283,11 +286,13 @@ class Existence:
                 self.INTERACTIONS[label] = interaction
                 decoded = Decode(str(label))
                 translated = decoded.get_translation()
+                print "\n"
                 print bcolors.OKGREEN + "Learn " + translated + bcolors.ENDC
             else:
                 interaction = self.INTERACTIONS[label]
                 decoded = Decode(str(interaction))
                 translated = decoded.get_translation()
+                print "\n"
                 print bcolors.OKGREEN + 'Incrementing weight for ' + translated + bcolors.ENDC
                 interaction.increment_weight()
 
@@ -308,6 +313,7 @@ class Existence:
                 anticipations.append(Anticipation(proposed_interaction, proclivity))
                 decoded = Decode(str(proposed_interaction))
                 translated = decoded.get_translation()
+                print "\n"
                 print bcolors.OKGREEN + "Proposed(Afforded): " + translated + " with proclivity: " + str(proclivity) + bcolors.ENDC
         return anticipations
 
@@ -336,6 +342,7 @@ class Existence:
                 intended_interaction = afforded_interaction
                 decoded = Decode(str(intended_interaction))
                 translated = decoded.get_translation()
+                print "\n"
                 print bcolors.OKGREEN + "Intending " + translated + bcolors.ENDC
                 chosen_experiment = intended_interaction.get_experiment()
             else:
@@ -343,6 +350,7 @@ class Existence:
                 chosen_experiment = self.get_random_experiment(afforded_interaction)
                 decoded = Decode(str(chosen_experiment.get_label()))
                 translated = decoded.get_translation()
+                print "\n"
                 print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + translated + bcolors.ENDC
         else:
             # if nothing was anticipated, choose at random
@@ -357,6 +365,7 @@ class Existence:
             #chosen_experiment = self.get_random_experiment(None)
             decoded = Decode(str(chosen_experiment.get_label()))
             translated = decoded.get_translation()
+            print "\n"
             print bcolors.OKGREEN + "Don't know what to do, intending experiment " + translated + bcolors.ENDC
         return chosen_experiment
 
@@ -422,78 +431,84 @@ class RecursiveExistence(Existence):
         if bbo.move_count == 0:
             ma.move_adv()
             return 1
+        print "\n"
         print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
         # translate the coded way of interactions in its clear meaning
         for i in self.INTERACTIONS:
             decoded = Decode(str(i))
             translated = decoded.get_translation()
             print bcolors.OKGREEN + translated + bcolors.ENDC
-        print "\n"
-        #raw_input(bcolors.OKGREEN + "Press ENTER to continue..." + bcolors.ENDC)
         
         anticipations = self.anticipate()
+        print "\n"
         print bcolors.OKGREEN + "Anticipated: " + bcolors.ENDC
         for anticipation in anticipations:
             experiment = anticipation.get_experiment()
-            if len(str(experiment)) > 5:
-                str(experiment).replace('<','')
-                str(experiment).replace('>','')
-                for i in range(len(str(experiment))/5):
-                    decoded = Decode(str(experiment)[i:i+5])
+            experiment = str(experiment)
+            proclivity = anticipation.get_proclivity()
+            if len(experiment) > 5:
+                experiment = experiment.replace('<','')
+                experiment = experiment.replace('>','')
+                for i in range(0,len(experiment),5):
+                    decoded = Decode(experiment[i:i+5])
                     translated = decoded.get_translation()
-                    print bcolors.OKGREEN + translated + bcolors.ENDC
+                    print bcolors.OKGREEN + translated + ', proclivity: ' + str(proclivity) + bcolors.ENDC
             else:
-                str(experiment).replace('<','')
-                str(experiment).replace('>','')
-                decoded = Decode(str(experiment))
+                experiment = experiment.replace('<','')
+                experiment = experiment.replace('>','')
+                decoded = Decode(experiment)
                 translated = decoded.get_translation()
-                print bcolors.OKGREEN + translated + bcolors.ENDC
+                print bcolors.OKGREEN + translated + ', proclivity: ' + str(proclivity) + bcolors.ENDC
             
-        #pdb.set_trace()
-            
+        print '\n'
+        print bcolors.OKGREEN + "Selected experiment: " + bcolors.ENDC
         experiment = self.select_experiment(anticipations)  # recursive experiment
-        if len(str(experiment.get_label())) > 5:
-            str(experiment.get_label()).replace('<','')
-            str(experiment.get_label()).replace('>','')
-            print bcolors.OKGREEN + "Selected experiment: " + bcolors.ENDC
-            for i in range(len(str(experiment.get_label()))/5):
-                decoded = Decode(str(experiment.get_label())[i:i+5])
+        expe = str(experiment.get_label())
+        if len(expe) > 5:
+            expe = expe.replace('<','')
+            expe = expe.replace('>','')
+            for i in range(0,len(expe),5):
+                decoded = Decode(expe[i:i+5])
                 translated = decoded.get_translation()
                 print bcolors.OKGREEN + translated + bcolors.ENDC
         else:
-            str(experiment.get_label()).replace('<','')
-            str(experiment.get_label()).replace('>','')
-            print bcolors.OKGREEN + "Selected experiment: " + bcolors.ENDC
-            decoded = Decode(str(experiment.get_label()))
+            expe = expe.replace('<','')
+            expe = expe.replace('>','')
+            decoded = Decode(expe)
             translated = decoded.get_translation()
             print bcolors.OKGREEN + translated + bcolors.ENDC
+            
+        print '\n'    
         intended_interaction = experiment.get_intended_interaction()
         decoded = Decode(str(intended_interaction))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Intending interaction: " + translated + bcolors.ENDC
         
-        if len(str(intended_interaction.get_experiment().get_label())) > 5:
-            str(intended_interaction.get_experiment().get_label()).replace('<','')
-            str(intended_interaction.get_experiment().get_label()).replace('>','')
+        print '\n'
+        label = intended_interaction.get_experiment().get_label()
+        if len(label) > 5:
+            label = label.replace('<','')
+            label = label.replace('>','')
             print bcolors.OKGREEN + "Intending experiment: " + bcolors.ENDC
-            for i in range(len(str(intended_interaction.get_experiment().get_label()))/5):
-                decoded = Decode(str(intended_interaction.get_experiment().get_label())[i:i+5])
+            for i in range(0,len(label),5):
+                decoded = Decode(label[i:i+5])
                 translated = decoded.get_translation()
                 print bcolors.OKGREEN + translated + bcolors.ENDC
         else:
-            str(intended_interaction.get_experiment().get_label()).replace('<','')
-            str(intended_interaction.get_experiment().get_label()).replace('>','')
+            label = label.replace('<','')
+            label = label.replace('>','')
             print bcolors.OKGREEN + "Intending experiment: " + bcolors.ENDC
-            decoded = Decode(str(intended_interaction.get_experiment().get_label()))
+            decoded = Decode(label)
             translated = decoded.get_translation()
             print bcolors.OKGREEN + translated + bcolors.ENDC
             
+        print '\n'    
         enacted_interaction = self.enact(intended_interaction)
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Enacted: " + translated + bcolors.ENDC
         if enacted_interaction != intended_interaction and experiment.is_abstract:
-            failed_result = self.addget_result(enacted_interaction.get_label().upper())
+            failed_result = self.addget_result(enacted_interaction.get_label())
             decoded = Decode(str(failed_result.get_label()))
             translated = decoded.get_translation()
             print bcolors.OKGREEN + "failed result: " + translated + bcolors.ENDC
@@ -504,6 +519,7 @@ class RecursiveExistence(Existence):
             enacted_interaction = self.addget_primitive_interaction(experiment, failed_result, valence)
             decoded = Decode(str(enacted_interaction))
             translated = decoded.get_translation()
+            print '\n'
             print bcolors.OKGREEN + "Really enacted: " + translated + bcolors.ENDC
 
         if enacted_interaction.get_valence() >= 0:
@@ -567,7 +583,6 @@ class RecursiveExistence(Existence):
         return self.addget_primitive_interaction(experiment, result)
 
     def select_experiment(self, anticipations):
-        #pdb.set_trace()
         if bbo.move_count > 1:
             anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
             selected_anticipation = anticipations[0]
@@ -624,6 +639,7 @@ class RecursiveExistence(Existence):
                 context_interactions.append(self.context_interaction.get_post_interaction())
             if self.context_pair_interaction is not None:
                 context_interactions.append(self.context_pair_interaction)
+        print '\n'
         print bcolors.OKGREEN + "Context: " + bcolors.ENDC
         for context_interaction in context_interactions:
             decoded = Decode(str(context_interaction))
@@ -636,23 +652,25 @@ class RecursiveExistence(Existence):
             if not activated_interaction.is_primitive():
                 if activated_interaction.get_pre_interaction() in context_interactions:
                     activated_interactions.append(activated_interaction)
-        
+        print '\n'            
         print bcolors.OKGREEN + "Activated: " + bcolors.ENDC
-        print 'activated_interactions: ', activated_interactions
         for activated_interaction in activated_interactions:
-            if len(str(activated_interaction)) > 5:
-                str(activated_interaction).replace('<','')
-                str(activated_interaction).replace('>','')
-                for i in range(len(str(activated_interaction))/5):
-                    decoded = Decode(str(activated_interaction)[i:i+5])
+            ai_label = activated_interaction.get_label()
+            ai_val = activated_interaction.get_valence()
+            ai_w = activated_interaction.get_weight()
+            if len(str(ai_label)) > 5:
+                ai_label = ai_label.replace('<','')
+                ai_label = ai_label.replace('>','')
+                for i in range(0,len(ai_label),5):
+                    decoded = Decode(ai_label[i:i+5])
                     translated = decoded.get_translation()
-                    print bcolors.OKGREEN + translated + bcolors.ENDC
+                    print bcolors.OKGREEN + translated + ', valence: ' + str(ai_val) + ', weight: ' + str(ai_w) + bcolors.ENDC
             else:
-                str(activated_interaction).replace('<','')
-                str(activated_interaction).replace('>','')
-                decoded = Decode(str(activated_interaction))
+                ai_label = ai_label.replace('<','')
+                ai_label = ai_label.replace('>','')
+                decoded = Decode(ai_label)
                 translated = decoded.get_translation()
-                print bcolors.OKGREEN + translated + bcolors.ENDC
+                print bcolors.OKGREEN + translated + ', valence: ' + str(ai_val) + ', weight: ' + str(ai_w) + bcolors.ENDC
         return activated_interactions
 
     def get_context_interaction(self):
@@ -692,10 +710,12 @@ class RecursiveExistence(Existence):
         if composite_interaction.get_weight() == 1:
             decoded = Decode(str(composite_interaction))
             translated = decoded.get_translation()
+            print '\n'
             print bcolors.OKGREEN + "Learned: " + translated + bcolors.ENDC
         else:
             decoded = Decode(str(composite_interaction))
             translated = decoded.get_translation()
+            print '\n'
             print bcolors.OKGREEN + "Reinforced: " + translated + bcolors.ENDC
 
         return composite_interaction
@@ -714,7 +734,7 @@ class RecursiveExistence(Existence):
             interaction.set_post_interaction(post_interaction)
             valence = pre_interaction.get_valence() + post_interaction.get_valence()
             interaction.set_valence(valence)
-            experiment_label = interaction.get_label().upper()
+            experiment_label = interaction.get_label()
             new_experiment = self.addget_abstract_experiment(experiment_label)
             new_experiment.set_abstract()
             new_experiment.set_intended_interaction(interaction)
@@ -745,6 +765,7 @@ class ConstructiveExistence(RecursiveExistence):
         #raw_input(bcolors.OKGREEN + "Press ENTER to continue..." + bcolors.ENDC)
         
         anticipations = self.anticipate()
+        print '\n'
         print bcolors.OKGREEN + "Anticipated: " + bcolors.ENDC
         for anticipation in anticipations:
             decoded = Decode(str(anticipation))
@@ -753,10 +774,12 @@ class ConstructiveExistence(RecursiveExistence):
         intended_interaction = self.select_interaction(anticipations)
         decoded = Decode(str(intended_interaction))
         translated = decoded.get_translation()
+        print '\n'
         print bcolors.OKGREEN + "Intended interaction: " + translated + bcolors.ENDC
         enacted_interaction = self.enact(intended_interaction)
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
+        print '\n'
         print bcolors.OKGREEN + "Enacted interaction: " + translated + bcolors.ENDC
 
         # if intended interaction failed, record the alternative
@@ -794,7 +817,7 @@ class ConstructiveExistence(RecursiveExistence):
         All experiments are now abstract, namely they are interactions.
         """
         #pdb.set_trace
-        label = interaction.get_label().upper()
+        label = interaction.get_label()
         if label not in self.EXPERIMENTS:
             abstract_experiment = RecursiveExperiment(label)
             abstract_experiment.set_intended_interaction(interaction)
@@ -827,6 +850,7 @@ class ConstructiveExistence(RecursiveExistence):
         anticipations = self.get_default_anticipations()
         decoded = Decode(str(anticipations))
         translated = decoded.get_translation()
+        print '\n'
         print bcolors.OKGREEN + "Default anticipations: " + translated + bcolors.ENDC
         activated_interactions = self.get_activated_interactions()
         # print "Activated interactions: ", activated_interactions

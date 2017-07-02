@@ -24,7 +24,7 @@ def singularities_selection():
     print 'bbo.Right: ', bbo.Right
     print 'bbo.Front: ', bbo.Front
     print 'bbo.Left: ', bbo.Left
-    pdb.set_trace()
+    #pdb.set_trace()
     if True not in bbo.Right and bbo.move_count > 0:
         print "Turning to the right since nothing on the RIGHT"
         bbo.adv_distance = 0.0
