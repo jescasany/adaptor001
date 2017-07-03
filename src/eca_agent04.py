@@ -8,7 +8,7 @@ Last visited on 6/06/2017
 The Enactive Cognitive Architecture (ECA)
 based on the paper of Georgeon, Marshall, and Manzotti (2013). ECA: An enactivist cognitive
 architecture based on sensorimotor modeling. Biologically Inspired Cognitive
-Architectures, 6:46-57.
+Architectures (BICA), 6:46-57.
 
 Implemented following the Behavior Trees model and the enactive agents code from Katja Abramova.
 """
@@ -41,9 +41,8 @@ from result import Result
 from anticipation import Anticipation, RecursiveAnticipation, ConstructiveAnticipation
 import random
 
-
 class EcaAgent04:
-    INTERACTION_ENACTION_HISTORY_SIZE = 50
+    INTERACTION_ENACTION_HISTORY_SIZE = 15
     def __init__(self):
         #pdb.set_trace()
         rospy.init_node("eca_agent04_tree")
@@ -133,7 +132,7 @@ class EcaAgent04:
                 if len(bbo.ex.INTERACTIONS) >= self.INTERACTION_ENACTION_HISTORY_SIZE:
                     bbo.ex.INTERACTIONS.popitem(last=False)
                     
-                if bbo.sim_step >= 3:
+                if bbo.sim_step > 15:
                     bbo.boredom = True
                 bbo.sim_step += 1
                 rate.sleep()
@@ -213,6 +212,8 @@ class Existence:
         result_label = self.environment.return_result(experiment)  # consult the world and return result
         result = self.addget_result(result_label)  # add result to the dictionary
         enacted_interaction = self.get_interaction(experiment.get_label() + result.get_label())
+        bbo.interaction = enacted_interaction
+        bbo.interaction1 = bbo.interaction
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
         print "\n"
@@ -278,7 +279,13 @@ class Existence:
             label = context_interaction.get_label() + enacted_interaction.get_label()
             if label not in self.INTERACTIONS:
                 # valence is a sum of the two valences of both primitive interactions
-                valence = context_interaction.get_valence() + enacted_interaction.get_valence()
+                bbo.interaction = context_interaction
+                bbo.interaction1 = bbo.interaction
+                valence1 = context_interaction.get_valence()
+                bbo.interaction = enacted_interaction
+                bbo.interaction1 = bbo.interaction
+                valence2 = enacted_interaction.get_valence()
+                valence = valence1 + valence2
                 interaction = Interaction(label)
                 interaction.set_pre_interaction(context_interaction)
                 interaction.set_post_interaction(enacted_interaction)
@@ -308,6 +315,8 @@ class Existence:
             for activated_interaction in activated_interactions:
                 # retrieve proposed interactions
                 proposed_interaction = activated_interaction.get_post_interaction()
+                bbo.interaction = proposed_interaction
+                bbo.interaction1 = bbo.interaction
                 # proclivity is a product of the weight of the whole interaction and a valence of proposed
                 proclivity = activated_interaction.get_weight() * proposed_interaction.get_valence()
                 anticipations.append(Anticipation(proposed_interaction, proclivity))
@@ -338,6 +347,8 @@ class Existence:
             #anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by proclivity
             anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
             afforded_interaction = anticipations[0].get_interaction()
+            bbo.interaction = afforded_interaction
+            bbo.interaction1 = bbo.interaction
             if afforded_interaction.get_valence() >= 0:
                 intended_interaction = afforded_interaction
                 decoded = Decode(str(intended_interaction))
@@ -504,6 +515,8 @@ class RecursiveExistence(Existence):
             
         print '\n'    
         enacted_interaction = self.enact(intended_interaction)
+        bbo.interaction = enacted_interaction
+        bbo.interaction1 = bbo.interaction
         decoded = Decode(str(enacted_interaction))
         translated = decoded.get_translation()
         print bcolors.OKGREEN + "Enacted: " + translated + bcolors.ENDC
@@ -605,6 +618,8 @@ class RecursiveExistence(Existence):
         if self.context_interaction is not None:
             activated_interactions = self.get_activated_interactions()
             for activated_interaction in activated_interactions:
+                bbo.interaction = activated_interaction.get_post_interaction()
+                bbo.interaction1 = bbo.interaction
                 # print "activated interaction: ", activated_interaction
                 experiment = activated_interaction.get_post_interaction().get_experiment()
                 # print "activated experiment: " + experiment.get_label()
@@ -655,6 +670,8 @@ class RecursiveExistence(Existence):
         print '\n'            
         print bcolors.OKGREEN + "Activated: " + bcolors.ENDC
         for activated_interaction in activated_interactions:
+            bbo.interaction = activated_interaction
+            bbo.interaction1 = bbo.interaction
             ai_label = activated_interaction.get_label()
             ai_val = activated_interaction.get_valence()
             ai_w = activated_interaction.get_weight()
@@ -732,7 +749,13 @@ class RecursiveExistence(Existence):
             interaction = self.addget_interaction(label)
             interaction.set_pre_interaction(pre_interaction)
             interaction.set_post_interaction(post_interaction)
-            valence = pre_interaction.get_valence() + post_interaction.get_valence()
+            bbo.interaction = pre_interaction
+            bbo.interaction1 = bbo.interaction
+            valence1 = pre_interaction.get_valence()
+            bbo.interaction = post_interaction
+            bbo.interaction1 = bbo.interaction
+            valence2 = post_interaction.get_valence()
+            valence = valence1 + valence2
             interaction.set_valence(valence)
             experiment_label = interaction.get_label()
             new_experiment = self.addget_abstract_experiment(experiment_label)
@@ -789,6 +812,8 @@ class ConstructiveExistence(RecursiveExistence):
             translated = decoded.get_translation()
             print bcolors.OKGREEN + "Alternative interactions:" + translated + bcolors.ENDC
 
+        bbo.interaction = enacted_interaction
+        bbo.interaction1 = bbo.interaction
         if enacted_interaction.get_valence() >= 0:
             self.mood = 'HAPPY'
         else:
@@ -839,7 +864,13 @@ class ConstructiveExistence(RecursiveExistence):
             interaction = self.addget_interaction(label)
             interaction.set_pre_interaction(pre_interaction)
             interaction.set_post_interaction(post_interaction)
-            valence = pre_interaction.get_valence() + post_interaction.get_valence()
+            bbo.interaction = pre_interaction
+            bbo.interaction1 = bbo.interaction
+            valence1 = pre_interaction.get_valence()
+            bbo.interaction = post_interaction
+            bbo.interaction1 = bbo.interaction
+            valence2 = post_interaction.get_valence()
+            valence = valence1 + valence2
             interaction.set_valence(valence)
             self.addget_abstract_experiment(interaction)
         return interaction
@@ -857,6 +888,8 @@ class ConstructiveExistence(RecursiveExistence):
         if self.context_interaction is not None:
             for activated_interaction in activated_interactions:
                 proposed_interaction = activated_interaction.get_post_interaction()
+                bbo.interaction = proposed_interaction
+                bbo.interaction1 = bbo.interaction
                 # print "activated experiment: " + experiment.get_label()
                 proclivity = activated_interaction.get_weight() * proposed_interaction.get_valence()
                 anticipation = ConstructiveAnticipation(proposed_interaction, proclivity)
@@ -876,6 +909,8 @@ class ConstructiveExistence(RecursiveExistence):
                     for activated_interaction in activated_interactions:
                         # combine proclivity with alternative interactions
                         if interaction == activated_interaction.get_post_interaction():
+                            bbo.interaction = interaction
+                            bbo.interaction1 = bbo.interaction
                             proclivity = activated_interaction.get_weight() * interaction.get_valence()
                             anticipations[index].add_proclivity(proclivity)
         return anticipations

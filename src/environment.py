@@ -110,9 +110,9 @@ class ConstructiveEnvironment:
             bbo.adv_angle = 0.0
             ma.move_adv()
             if bbo.singularity_selection == 2:
-               result = 'r02'  #  turn left <-- RIGHT-FRONT are busy
+                result = 'r02'  #  turn left <-- RIGHT-FRONT are busy
             elif bbo.singularity_selection == 1:
-               result = 'r03'  #  turn right <-- nothing on the RIGHT
+                result = 'r03'  #  turn right <-- nothing on the RIGHT
             elif bbo.singularity_selection == 5:
                 result = 'r01'  # moved forward following a wall on the right
             elif bbo.singularity_selection == 3:

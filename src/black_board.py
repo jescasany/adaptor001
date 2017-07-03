@@ -376,7 +376,7 @@ def arrange():
         turn = sign(angle_rad_rot)*abs(math.pi - abs(angle_rad_rot))
         print bcolors.OKBLUE + "agent_rotation_angle: ", str(agent_rotation_angle),  "\n", "degrees(turn): ", str(math.degrees(turn)) + bcolors.ENDC
         (bbo.agent_position, bbo.agent_rotation) = advance(0.0, turn, da=True)
-    
+        
     bbo.agent_rotation_angle = math.degrees(normalize_angle(quat_to_angle(bbo.agent_rotation)))
     bbo.arrange_status = False
     return 1

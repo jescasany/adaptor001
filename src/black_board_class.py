@@ -45,6 +45,7 @@ class BlackBoard:
         
         self.driving_forward = True      # is True if there is no obstacle ahead 
         self.move_fail = False       #  whether move_adv fails or not
+        self.interaction = None
         
         self.limit_range = 5.1
         self.distance_to_right_wall = 1.5

@@ -10,10 +10,7 @@ import pdb
 
 from black_board_class import bbo
 
-import black_board 
-
 from boredom import boredom_handler
-
 
 
 class Interaction:
@@ -50,23 +47,35 @@ class Interaction:
         self.result = result
 
     def get_valence(self):
-        pdb.set_trace
-        interaction = self
+        interaction = bbo.interaction
         if bbo.boredom:
             if self.is_primitive():
+                bbo.interaction = None
                 return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
             else:
                 pre = self.get_pre_interaction()
                 post = self.get_post_interaction()
-                self.valence = pre.get_valence() + post.get_valence()
+                bbo.interaction = pre
+                valence1 = pre.get_valence()
+                bbo.interaction = post
+                valence2 = post.get_valence()
+                self.valence = valence1 + valence2
+                interaction = bbo.interaction1
+                bbo.interaction = None
                 return boredom_handler.process_boredom(bbo.ex.INTERACTIONS, interaction, self.valence)
         else:
             if self.is_primitive():
+                bbo.interaction = None
                 return self.valence
             else:
                 pre = self.get_pre_interaction()
                 post = self.get_post_interaction()
-                self.valence = pre.get_valence() + post.get_valence()
+                bbo.interaction = pre
+                valence1 = pre.get_valence()
+                bbo.interaction = post
+                valence2 = post.get_valence()
+                self.valence = valence1 + valence2
+                bbo.interaction = None
                 return self.valence
 
     def set_valence(self, valence):

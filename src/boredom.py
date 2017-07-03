@@ -123,7 +123,7 @@ class RepetitiveBoredomHandler(BoredomHandler):
             return c1_dot_c2 / (math.sqrt(c1_len_squared) * math.sqrt(c2_len_squared))
 
     def process_boredom(self, INTERACTIONS, interaction, unmodified_valence):
-        #pdb.set_trace()
+        pdb.set_trace()
         history = INTERACTIONS.keys()[-self.HISTORY_CONSIDER_SIZE:]
         history_count = self.count_interactions(history)
         interaction_count = self.count_interactions(interaction.unwrap())
