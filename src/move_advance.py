@@ -24,7 +24,7 @@ def singularities_selection():
     print 'bbo.Right: ', bbo.Right
     print 'bbo.Front: ', bbo.Front
     print 'bbo.Left: ', bbo.Left
-    pdb.set_trace()
+    #pdb.set_trace()
         
     if not (True in bbo.Right) and bbo.move_count > 0:
         print "Turning to the right since nothing on the RIGHT"
@@ -54,7 +54,7 @@ def singularities_selection():
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.cos(angle)
-        bbo.adv_distance = dist + 1.2
+        bbo.adv_distance = dist + 1.0
         bbo.adv_angle = 0.0
         bbo.da = True
         bbo.singularity_selection = 3
@@ -65,7 +65,7 @@ def singularities_selection():
         corner_distance = bbo.right_distances[-2]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.sin(angle)
-        bbo.adv_distance = dist + 1.2
+        bbo.adv_distance = dist + 1.0
         if bbo.corner1 == True and bbo.rf == True:
             bbo.adv_angle = 0.0
             bbo.da = False

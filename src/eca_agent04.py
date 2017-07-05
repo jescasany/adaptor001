@@ -442,6 +442,7 @@ class RecursiveExistence(Existence):
         if bbo.move_count == 0:
             ma.move_adv()
             return 1
+        pdb.set_trace()
         print "\n"
         print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
         # translate the coded way of interactions in its clear meaning
@@ -547,6 +548,7 @@ class RecursiveExistence(Existence):
         return 1
 
     def initialize_interactions(self, primitive_interactions):
+        pdb.set_trace()
         for interaction in primitive_interactions:
             meaning = interaction
             experiment_label = primitive_interactions[interaction][0]
@@ -558,7 +560,7 @@ class RecursiveExistence(Existence):
 
         for experiment in self.EXPERIMENTS.values():
             interaction = Interaction(experiment.get_label() + "r01")
-            interaction.set_valence(1)
+            interaction.set_valence(50)
             interaction.set_experiment(experiment)
             experiment.set_intended_interaction(interaction)
 
@@ -742,7 +744,7 @@ class RecursiveExistence(Existence):
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
-        #pdb.set_trace
+        pdb.set_trace()
         label = "<" + pre_interaction.get_label() + post_interaction.get_label() + ">"
         interaction = self.get_interaction(label)
         if interaction is None:

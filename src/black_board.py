@@ -284,7 +284,7 @@ def laser_scan():
     rospy.Subscriber('/base_scan', sensor_msgs.msg.LaserScan, scan_callback, queue_size = 10)
     rospy.sleep(0.1)
     bbo.kinect_scan = []
-    bbo.distance_front = min(bbo.raw_kinect_scan[300:338])
+    bbo.distance_front = min(bbo.raw_kinect_scan[300:338])  # NOTE that is just raw_kinect_scan not transformed kinect_scan
     # transform the laser readings to one in six (0-639 to 0-106)
     for i in range(0, len(bbo.raw_kinect_scan), 6):
         if bbo.raw_kinect_scan[i] == 5.0:
@@ -308,7 +308,7 @@ def laser_scan():
 def scan_callback(msg):
     bbo.raw_kinect_scan = list(msg.ranges) # transformed to list since msg.ranges is a tuple
     bbo.angle_min = msg.angle_min
-    bbo.angle_increment = 6 * msg.angle_increment
+    bbo.angle_increment = 6 * msg.angle_increment   #  6 is the number of readings we are jumping
     
 def formule(L, tolerance):
     f = 0
