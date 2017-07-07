@@ -1,16 +1,20 @@
-primitive_interactions = {"move forward wall": ("e1", "r1", 50),\
-                                  "move forward": ("e1", "r4", 0),\
+primitive_interactions = {"move forward right wall": ("e1", "r01", 50),\
+                                  "move forward no right wall": ("e1", "r04", -50),\
                                   "move forward fail": ("e1", "r10", -50),\
-                                  "turn left": ("e2", "r2", 5),\
-                                  "turn right": ("e3", "r3", 25),\
+                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r02", 25),\
+#                                  "turn left no wall": ("e2", "r15", -20),\
+#                                  "turn left fail": ("e1", "r16", -50),\
+                                  "turn right <-- nothing on the RIGHT": ("e1", "r03", 25),\
+#                                  "turn right no wall": ("e3", "r17", -20),\
+#                                  "turn right fail <-- nothing on the RIGHT": ("e1", "r18", -50),\
 #                                  "front free": ("e4", "r4", 1),\
 #                                  "front busy": ("e4", "r5", -2),\
-                                  "right1 sensing": ("e5", "r6", 20),\
-                                  "right2 sensing": ("e5", "r8", 10),\
-                                  "right3 sensing": ("e5", "r12", 5),\
-                                  "nothing on right1": ("e5", "r14", -50),\
-                                  "left1 sensing": ("e6", "r7", 0),\
-                                  "left2 sensing": ("e6", "r9", 0),\
-                                  "left3 sensing": ("e6", "r11", 0),\
-                                  "nothing on left1": ("e6", "r13", 0)
+                                  "right sensing corner1": ("e1", "r06", 30),\
+#                                  "right2 sensing": ("e5", "r14", 10),\
+#                                  "right3 sensing": ("e5", "r12", 10),\
+                                  "right sensing corner2(door)": ("e1", "r08", 30)
+#                                  "left sensing": ("e6", "r7", 0),\
+#                                  "left2 sensing": ("e6", "r9", 0),\
+#                                  "left3 sensing": ("e6", "r11", 0),\
+#                                  "nothing on left1": ("e6", "r13", 0)
 }

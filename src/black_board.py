@@ -24,13 +24,23 @@ from adaptor001.msg import ExtractedLines
 
 from fancy_prompts import bcolors
 
+from decode import Decode
+
 from angles import constrain_angle
 
 def print_position():
     print bbo.move_count
     print bbo.agent_position
     print bbo.agent_rotation
-    
+
+def print_interaction(interaction, text):
+    bbo.interaction = interaction
+    bbo.interaction1 = bbo.interaction
+    decoded = Decode(str(interaction))
+    translated = decoded.get_translation()
+    print "\n"
+    print bcolors.OKGREEN + text + translated + bcolors.ENDC
+   
 def plotter((x, y), name):    
     """
     Uncomment these next few lines to display a constantly updating graph of data.

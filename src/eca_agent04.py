@@ -57,9 +57,9 @@ class EcaAgent04:
         bbo.ex = None
         # initialize primitive interactions
         primitive_interactions = {"move forward right wall": ("e1", "r01", 50),\
-                                  "move forward no right wall": ("e1", "r04", -20),\
+                                  "move forward no right wall": ("e1", "r04", -50),\
                                   "move forward fail": ("e1", "r10", -50),\
-                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r02", 15),\
+                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r02", 25),\
 #                                  "turn left no wall": ("e2", "r15", -20),\
 #                                  "turn left fail": ("e1", "r16", -50),\
                                   "turn right <-- nothing on the RIGHT": ("e1", "r03", 25),\
@@ -67,10 +67,10 @@ class EcaAgent04:
 #                                  "turn right fail <-- nothing on the RIGHT": ("e1", "r18", -50),\
 #                                  "front free": ("e4", "r4", 1),\
 #                                  "front busy": ("e4", "r5", -2),\
-                                  "right sensing corner1": ("e1", "r06", 20),\
+                                  "right sensing corner1": ("e1", "r06", 30),\
 #                                  "right2 sensing": ("e5", "r14", 10),\
 #                                  "right3 sensing": ("e5", "r12", 10),\
-                                  "right sensing corner2(door)": ("e1", "r08", 20)
+                                  "right sensing corner2(door)": ("e1", "r08", 30)
 #                                  "left sensing": ("e6", "r7", 0),\
 #                                  "left2 sensing": ("e6", "r9", 0),\
 #                                  "left3 sensing": ("e6", "r11", 0),\
@@ -203,21 +203,13 @@ class Existence:
         if bbo.move_count == 0:
             ma.move_adv()
             return 1
-        decoded = Decode(str(self.context_interaction))
-        translated = decoded.get_translation()
-        print "\n"
-        print bcolors.OKGREEN + "Context: " + translated + bcolors.ENDC
+        bb.print_interaction(self.context_interaction, 'Context: ')
         anticipations = self.anticipate()  # anticipate possible interactions
         experiment = self.select_experiment(anticipations)  # select the best experiment
         result_label = self.environment.return_result(experiment)  # consult the world and return result
         result = self.addget_result(result_label)  # add result to the dictionary
         enacted_interaction = self.get_interaction(experiment.get_label() + result.get_label())
-        bbo.interaction = enacted_interaction
-        bbo.interaction1 = bbo.interaction
-        decoded = Decode(str(enacted_interaction))
-        translated = decoded.get_translation()
-        print "\n"
-        print bcolors.OKGREEN + "Enacted " + translated + bcolors.ENDC
+        bb.print_interaction(enacted_interaction, 'Enacted: ')
 
         if enacted_interaction.get_valence() > 0:
             self.mood = 'HAPPY'
@@ -291,16 +283,10 @@ class Existence:
                 interaction.set_post_interaction(enacted_interaction)
                 interaction.set_valence(valence)
                 self.INTERACTIONS[label] = interaction
-                decoded = Decode(str(label))
-                translated = decoded.get_translation()
-                print "\n"
-                print bcolors.OKGREEN + "Learn " + translated + bcolors.ENDC
+                bb.print_interaction(str(label), 'Learn: ')
             else:
                 interaction = self.INTERACTIONS[label]
-                decoded = Decode(str(interaction))
-                translated = decoded.get_translation()
-                print "\n"
-                print bcolors.OKGREEN + 'Incrementing weight for ' + translated + bcolors.ENDC
+                bb.print_interaction(str(interaction), 'Incrementing weight for: ')
                 interaction.increment_weight()
 
     def anticipate(self):
@@ -347,22 +333,14 @@ class Existence:
             #anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by proclivity
             anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
             afforded_interaction = anticipations[0].get_interaction()
-            bbo.interaction = afforded_interaction
-            bbo.interaction1 = bbo.interaction
             if afforded_interaction.get_valence() >= 0:
                 intended_interaction = afforded_interaction
-                decoded = Decode(str(intended_interaction))
-                translated = decoded.get_translation()
-                print "\n"
-                print bcolors.OKGREEN + "Intending " + translated + bcolors.ENDC
+                bb.print_interaction(str(intended_interaction), 'Intending: ')
                 chosen_experiment = intended_interaction.get_experiment()
             else:
                 # if proposed interaction leads to negative valence, choose at random
                 chosen_experiment = self.get_random_experiment(afforded_interaction)
-                decoded = Decode(str(chosen_experiment.get_label()))
-                translated = decoded.get_translation()
-                print "\n"
-                print bcolors.OKGREEN + "Don't like the affordance, intending experiment " + translated + bcolors.ENDC
+                bb.print_interaction(str(chosen_experiment.get_label()), "Don't like the affordance, intending experiment: ")
         else:
             # if nothing was anticipated, choose at random
             # we have decided to use the max valence interaction instead
@@ -374,10 +352,7 @@ class Existence:
                     experiment = self.primitive_interactions[interaction][0]
             chosen_experiment = self.EXPERIMENTS[experiment]
             #chosen_experiment = self.get_random_experiment(None)
-            decoded = Decode(str(chosen_experiment.get_label()))
-            translated = decoded.get_translation()
-            print "\n"
-            print bcolors.OKGREEN + "Don't know what to do, intending experiment " + translated + bcolors.ENDC
+            bb.print_interaction(str(chosen_experiment.get_label()), "Don't know what to do, intending experiment: ")
         return chosen_experiment
 
     def get_random_experiment(self, interaction):
