@@ -83,12 +83,12 @@ class BlackBoard:
         self.agent_rotation = Quaternion()
         self.agent_pose = (Point(), Quaternion())
         self.agent_rotation_angle = 0.0
-        # Create a dictionary to hold navigation waypoints
+        # Create an ordered dictionary to hold navigation waypoints
         self.waypoints = list()
         self.waypoint_visited = False
         (self.agent_position, self.agent_rotation) = self.agent_pose 
         self.odom_angle = 0.0
-        self.agent_mechanism = ''    # to choose among simple, recursive and constructive mechanisms
+        self.agent_mechanism = ''  # to choose among simple, recursive and constructive mechanisms
         self.boredom = False
         
         self.line = ExtractedLine()

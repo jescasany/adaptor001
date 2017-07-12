@@ -11,7 +11,8 @@ from black_board_class import bbo
 import rospy
 
 import math
-import pylab
+import matplotlib.pyplot as plt
+import numpy as np
 from geometry_msgs.msg import Twist, Point32
 
 from advance import advance
@@ -41,19 +42,30 @@ def print_interaction(interaction, text):
     print "\n"
     print bcolors.OKGREEN + text + translated + bcolors.ENDC
    
-def plotter((x, y), name):    
+def plotter(y, name):    
     """
     Uncomment these next few lines to display a constantly updating graph of data.
     Note: when the graph appears, you must close it first, and then the graph will 
     reopen and display the data as it comes in.
     """
-    pylab.figure(name)
-    pylab.clf()
-    pylab.plot(x, y, color = 'black')
-    pylab.plot(x, y, 'bo')
-    pylab.draw()
-    pylab.show()
- 
+    x = []
+    for i in range(214):
+        x.append(i*bbo.angle_increment)
+    for i in range(214-len(y)):
+        y.append(0.0)
+    print x
+    print y
+    print math.degrees(bbo.angle_increment)
+    ax = plt.subplot(111, projection='polar')
+    ax.plot(x, y, 'ro', x, y, 'k')
+    ax.set_ylim(min(y)-1, max(y)+1)
+    ax.set_rmax(max(y)+1)
+    ax.set_rticks(np.arange(min(y)-1,max(y)+1,1.0))  # less radial ticks
+    ax.set_rlabel_position(-bbo.angle_increment)  # get radial labels away from plotted line
+    ax.grid(True)
+    ax.set_title(name, va='bottom')
+    plt.show()
+
 def display_callback(lines_msg):
     """
     Callback for extracted lines, displayed by publishing to
@@ -337,10 +349,11 @@ def moving_window_filtro(x, tolerance=0.2, n_neighbors=1):
     last_sing = 0
     for i in range(n):
         fi = abs(formule(x[i:i+width], tolerance))
-        filtro.append(fi)
+        
         # append a singularity at least separated 4 readings from previous
         # it's 4 for one reading in six 
         if fi != 0.0 and (i - last_sing) > 4:
+            filtro.append(fi)
             singularity.append(i)
             last_sing = i
         
@@ -407,7 +420,7 @@ def right_status():
     r = list()
     r = bbo.kinect_scan
     bbo.lines.header.stamp = rospy.Time.now()
-    #plotter(r[0:200], "Right")
+    plotter(r[0:36], "Right")
     
     filtered_scan, singularities = moving_window_filtro(r[bbo.laser_right_start:bbo.laser_right_end], bbo.tolerance, n_neighbors=1)
     
@@ -433,8 +446,7 @@ def right_status():
             bbo.right_distances.append(r[singularities[i]])
         #print "Right tracks: ", tracks
     #pdb.set_trace()    
-#        if len(singularities) != 0:
-#            plotter(filtered_scan, "Right-filtered")
+        plotter(filtered_scan, "Right-filtered")
     line = ExtractedLine()
     track_count = 1
     index_count = 0
