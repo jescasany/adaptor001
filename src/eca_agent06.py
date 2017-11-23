@@ -41,11 +41,11 @@ from result import Result
 from anticipation import Anticipation, RecursiveAnticipation, ConstructiveAnticipation
 import random
 
-class EcaAgent05:
+class EcaAgent06:
     INTERACTION_ENACTION_HISTORY_SIZE = 500
     def __init__(self):
         #pdb.set_trace()
-        rospy.init_node("eca_agent05_tree")
+        rospy.init_node("eca_agent06_tree")
         # Set the shutdown function (stop the agent)
         rospy.on_shutdown(self.shutdown)
         # Publisher to manually control the agent (e.g. to stop it)
@@ -88,41 +88,41 @@ class EcaAgent05:
             bbo.environment = ConstructiveEnvironment()
             bbo.ex = ConstructiveExistence(primitive_interactions, bbo.environment)
         # Create the root node
-        ECAAGENT05 = Sequence("ECAAGENT05")
+        ECAAGENT06 = Sequence("ECAAGENT06")
         
         I_F_IS_VISITED =IgnoreFailure("I_F IS VISITED")
         
-        IS_VISITED = CallbackTask("IS VISITED", self.is_visited)
-        
-        START_STEP = CallbackTask("START STEP", bbo.ex.step)
-        
         # These conditions use CallbackTask
         LASER_SCAN = CallbackTask("LASER SCAN", bb.laser_scan)
+        SAVE_IMAGES = CallbackTask("SAVE IMAGES", bb.save_images)
         RIGHT_STATUS = CallbackTask("RIGHT STATUS", bb.right_status)
         FRONT_STATUS = CallbackTask("FRONT STATUS", bb.front_status)
         LEFT_STATUS = CallbackTask("LEFT STATUS", bb.left_status)
         ARRANGE = CallbackTask("ARRANGE", bb.arrange)
+        START_STEP = CallbackTask("START STEP", bbo.ex.step)
+        IS_VISITED = CallbackTask("IS VISITED", self.is_visited)
         
         # Add the subtrees to the root node in order of priority
-        ECAAGENT05.add_child(LASER_SCAN)
-        ECAAGENT05.add_child(RIGHT_STATUS)
-        ECAAGENT05.add_child(FRONT_STATUS)
-        ECAAGENT05.add_child(LEFT_STATUS)
-        ECAAGENT05.add_child(ARRANGE)
-        ECAAGENT05.add_child(START_STEP)
-        ECAAGENT05.add_child(I_F_IS_VISITED)
+        ECAAGENT06.add_child(LASER_SCAN)
+        ECAAGENT06.add_child(SAVE_IMAGES)
+        ECAAGENT06.add_child(RIGHT_STATUS)
+        ECAAGENT06.add_child(FRONT_STATUS)
+        ECAAGENT06.add_child(LEFT_STATUS)
+        ECAAGENT06.add_child(ARRANGE)
+        ECAAGENT06.add_child(START_STEP)
+        ECAAGENT06.add_child(I_F_IS_VISITED)
         
         I_F_IS_VISITED.add_child(IS_VISITED)
         
         # Display the tree before beginning execution
-        print bcolors.HEADER + " ECAAGENT05 Behavior Tree " + bcolors.ENDC
-        print_tree(ECAAGENT05, indent=0, use_symbols=True)
-        print_dot_tree(ECAAGENT05, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree05.dot')
+        print bcolors.HEADER + " ECAAGENT06 Behavior Tree " + bcolors.ENDC
+        print_tree(ECAAGENT06, indent=0, use_symbols=True)
+        print_dot_tree(ECAAGENT06, dotfilepath='/home/juan/catkin_ws/src/adaptor001/tree06.dot')
         
         # Run the tree
         while not rospy.is_shutdown():
             #pdb.set_trace()
-            ECAAGENT05.run()
+            ECAAGENT06.run()
             if bbo.move_count != 0:
                 decoded = Decode(str(bbo.step_trace))
                 translated = decoded.get_translation()
@@ -158,6 +158,8 @@ class EcaAgent05:
         
     def shutdown(self):
         print bcolors.WARNING + "MAIN stopping of the agent..." + bcolors.ENDC
+        bbo.images.close()
+        bbo.labels.close()
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
     
@@ -948,7 +950,7 @@ class ConstructiveExistence(RecursiveExistence):
     
 if __name__ == '__main__':
     #pdb.set_trace()
-    # run with  i.e. rosrun eca_agent05.py recursive
+    # run with  i.e. rosrun eca_agent04.py recursive
     parser = argparse.ArgumentParser()
     parser.add_argument("mechanism", type=str, help="specify the learning mechanism to be used",
                         choices=["simple", "recursive", "constructive"])
@@ -956,5 +958,5 @@ if __name__ == '__main__':
     
     bbo.agent_mechanism = args.mechanism
     
-    tree = EcaAgent05()
+    tree = EcaAgent06()
   
