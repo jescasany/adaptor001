@@ -79,7 +79,8 @@ class Environment:
 #                result = 'r13'   # nothing on the left
 
         self.last_result = result
-        bbo.labels.write(result + ",")
+        pdb.set_trace()
+        bbo.labels.write(result + " ")
         bbo.environment_status = False
         return result
 
@@ -166,7 +167,7 @@ class ConstructiveEnvironment:
                 
         enacted_interaction = experiment+result
         self.last_interaction = enacted_interaction
-        bbo.labels.write(result + ",")
+        bbo.labels.write(result + " ")
         bbo.environment_status = False
         return enacted_interaction
     
