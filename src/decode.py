@@ -19,9 +19,9 @@ class Decode:
         self.raw = self.raw.replace('e1r01','move forward right wall ')
         self.raw = self.raw.replace('e1r02','turn left <-- RIGHT+FRONT busy ')
         self.raw = self.raw.replace('e1r03','turn right <-- nothing on RIGHT ')
-        self.raw = self.raw.replace('e1r04','move forward no right wall ')
-        self.raw = self.raw.replace('e1r06','right sensing corner1 ')
-        self.raw = self.raw.replace('e1r08','right sensing corner2(door) ')
+        self.raw = self.raw.replace('e1r06','move forward no right wall ')
+        self.raw = self.raw.replace('e1r04','right sensing corner1 ')
+        self.raw = self.raw.replace('e1r05','right sensing corner2(door) ')
         
         self.raw = self.raw.replace('e1r16','turn left fail')
         self.raw = self.raw.replace('e1r18','turn right fail <-- nothing on the RIGHT ')

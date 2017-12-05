@@ -40,6 +40,7 @@ from experiment import Experiment, RecursiveExperiment
 from result import Result
 from anticipation import Anticipation, RecursiveAnticipation, ConstructiveAnticipation
 import random
+import numpy as np
 
 class EcaAgent06:
     INTERACTION_ENACTION_HISTORY_SIZE = 500
@@ -57,20 +58,20 @@ class EcaAgent06:
         bbo.ex = None
         # initialize primitive interactions
         primitive_interactions = {"move forward right wall": ("e1", "r01", 50),\
-                                  "move forward no right wall": ("e1", "r04", -50),\
+                                  "move forward no right wall": ("e1", "r06", -50),\
                                   "move forward fail": ("e1", "r10", -50),\
-                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r02", 25),\
+                                  "turn left <-- RIGHT-FRONT busy": ("e1", "r02", 20),\
 #                                  "turn left no wall": ("e2", "r15", -20),\
 #                                  "turn left fail": ("e1", "r16", -50),\
-                                  "turn right <-- nothing on the RIGHT": ("e1", "r03", 25),\
+                                  "turn right <-- nothing on the RIGHT": ("e1", "r03", 20),\
 #                                  "turn right no wall": ("e3", "r17", -20),\
 #                                  "turn right fail <-- nothing on the RIGHT": ("e1", "r18", -50),\
 #                                  "front free": ("e4", "r4", 1),\
 #                                  "front busy": ("e4", "r5", -2),\
-                                  "right sensing corner1": ("e1", "r06", 30),\
+                                  "right sensing corner1": ("e1", "r04", 40),\
 #                                  "right2 sensing": ("e5", "r14", 10),\
 #                                  "right3 sensing": ("e5", "r12", 10),\
-                                  "right sensing corner2(door)": ("e1", "r08", 30)
+                                  "right sensing corner2(door)": ("e1", "r05", 40)
 #                                  "left sensing": ("e6", "r7", 0),\
 #                                  "left2 sensing": ("e6", "r9", 0),\
 #                                  "left3 sensing": ("e6", "r11", 0),\
@@ -94,23 +95,23 @@ class EcaAgent06:
         
         # These conditions use CallbackTask
         LASER_SCAN = CallbackTask("LASER SCAN", bb.laser_scan)
-        SAVE_IMAGES = CallbackTask("SAVE IMAGES", bb.save_images)
+        #SAVE_IMAGES = CallbackTask("SAVE IMAGES", bb.save_images)
         RIGHT_STATUS = CallbackTask("RIGHT STATUS", bb.right_status)
         FRONT_STATUS = CallbackTask("FRONT STATUS", bb.front_status)
         LEFT_STATUS = CallbackTask("LEFT STATUS", bb.left_status)
         ARRANGE = CallbackTask("ARRANGE", bb.arrange)
-        START_STEP = CallbackTask("START STEP", bbo.ex.step)
         IS_VISITED = CallbackTask("IS VISITED", self.is_visited)
+        START_STEP = CallbackTask("START STEP", bbo.ex.step)
         
         # Add the subtrees to the root node in order of priority
         ECAAGENT06.add_child(LASER_SCAN)
-        ECAAGENT06.add_child(SAVE_IMAGES)
+        #ECAAGENT06.add_child(SAVE_IMAGES)
         ECAAGENT06.add_child(RIGHT_STATUS)
         ECAAGENT06.add_child(FRONT_STATUS)
         ECAAGENT06.add_child(LEFT_STATUS)
         ECAAGENT06.add_child(ARRANGE)
-        ECAAGENT06.add_child(START_STEP)
         ECAAGENT06.add_child(I_F_IS_VISITED)
+        ECAAGENT06.add_child(START_STEP)
         
         I_F_IS_VISITED.add_child(IS_VISITED)
         
@@ -158,8 +159,7 @@ class EcaAgent06:
         
     def shutdown(self):
         print bcolors.WARNING + "MAIN stopping of the agent..." + bcolors.ENDC
-        bbo.images.close()
-        bbo.labels.close()
+
         self.cmd_vel_pub.publish(Twist())
         rospy.sleep(1)
     
@@ -332,8 +332,8 @@ class Existence:
         """Select experiment from proposed anticipations"""
         #pdb.set_trace
         if len(anticipations) > 0:
-            #anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by proclivity
-            anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
+            anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by proclivity
+            #anticipations.sort(key=lambda x: x.compare(), reverse=True)  # choose by valence
             afforded_interaction = anticipations[0].get_interaction()
             if afforded_interaction.get_valence() >= 0:
                 intended_interaction = afforded_interaction
@@ -419,7 +419,7 @@ class RecursiveExistence(Existence):
         if bbo.move_count == 0:
             ma.move_adv()
             return 1
-        pdb.set_trace()
+        #pdb.set_trace()
         print "\n"
         print bcolors.OKGREEN + "Memory: " + bcolors.ENDC
         # translate the coded way of interactions in its clear meaning
@@ -525,7 +525,7 @@ class RecursiveExistence(Existence):
         return 1
 
     def initialize_interactions(self, primitive_interactions):
-        pdb.set_trace()
+        #pdb.set_trace()
         for interaction in primitive_interactions:
             meaning = interaction
             experiment_label = primitive_interactions[interaction][0]
@@ -721,7 +721,7 @@ class RecursiveExistence(Existence):
         If a new composite interaction is created, then a new abstract 
         experience is also created and associated to it.
         """
-        pdb.set_trace()
+        #pdb.set_trace()
         label = "<" + pre_interaction.get_label() + post_interaction.get_label() + ">"
         interaction = self.get_interaction(label)
         if interaction is None:

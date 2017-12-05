@@ -333,7 +333,12 @@ def scan_callback(msg):
     bbo.angle_increment = 6 * msg.angle_increment   #  6 is the number of readings we are jumping
     
 def save_images():
-    bbo.images.write(str(bbo.raw_kinect_scan) + " ")
+    i_name = '/home/juan/catkin_ws/src/adaptor001/src/images'
+    a = np.array(bbo.raw_kinect_scan)/5.0
+        
+    with open(i_name, 'a+') as i_file:
+        i_file.write(a)
+    
     return 1
     
 def formule(L, tolerance):

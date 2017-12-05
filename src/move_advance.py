@@ -34,18 +34,12 @@ def singularities_selection():
         bbo.singularity_selection = 1
         bbo.rf = True
     
-    elif bbo.Right[0:2] == [True, True] and True in bbo.Front and bbo.corner1 == False:
+    elif True in bbo.Right and len(bbo.right_singularities) == 0 and True in bbo.Front and bbo.corner1 == False:
         print "Turning to the left since RIGHT and FRONT are busy"
         bbo.adv_distance = 0.0
         bbo.adv_angle = math.pi/2
         bbo.da = True
         bbo.singularity_selection = 2
-        
-    elif len(bbo.front_singularities) >= 4:
-        dist = bbo.front_distances[1]
-        bbo.adv_distance = dist + 1.5
-        bbo.adv_angle = 0.0
-        bbo.da = True
         
     elif len(bbo.right_singularities) >= 3 and bbo.Right[0:2] == [True, False]:
         if bbo.corner1 == True:
@@ -54,7 +48,7 @@ def singularities_selection():
         corner_distance = bbo.right_distances[1]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.cos(angle)
-        bbo.adv_distance = dist + 1.0
+        bbo.adv_distance = dist + 0.5
         bbo.adv_angle = 0.0
         bbo.da = True
         bbo.singularity_selection = 3
@@ -65,7 +59,7 @@ def singularities_selection():
         corner_distance = bbo.right_distances[-2]
         angle = bbo.angle_min + corner_index * bbo.angle_increment
         dist = corner_distance * math.sin(angle)
-        bbo.adv_distance = dist + 1.0
+        bbo.adv_distance = dist + 0.5
         if bbo.corner1 == True and bbo.rf == True:
             bbo.adv_angle = 0.0
             bbo.da = False
@@ -179,7 +173,7 @@ def move_adv():
             bbo.da = False
             (bbo.agent_position, bbo.agent_rotation) = advance(0.5, math.pi, bbo.da)
             rospy.sleep(2)
-            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -(math.pi/2), bbo.da)
+            (bbo.agent_position, bbo.agent_rotation) = advance(0.0, -(math.pi), bbo.da)
             bbo.move_fail = True
             
     except:

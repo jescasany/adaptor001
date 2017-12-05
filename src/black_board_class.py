@@ -28,8 +28,6 @@ class BlackBoard:
         # Initialize a number of variables for the blackboard
         self.kinect_scan = list()
         self.filtered_scan = list()
-        self.images = open("/home/juan/catkin_ws/src/adaptor001/src/images", "a+")
-        self.labels = open("/home/juan/catkin_ws/src/adaptor001/src/labels", "a+")
         # Initialize tolerance for the filter
         self.tolerance = 0.3
         # Laser reading number for right, front and left
